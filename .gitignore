@@ -37,3 +37,9 @@ logs/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Cython build artifacts
+*.c
+*.so
+*.pyd
+*.html

@@ -1,0 +1,35 @@
+# Include documentation
+include README.md
+include LICENSE
+include pyproject.toml
+include setup.py
+
+# Include public Python source files (student-facing)
+include src/q21_referee/__init__.py
+include src/q21_referee/callbacks.py
+include src/q21_referee/runner.py
+include src/q21_referee/errors.py
+include src/q21_referee/types.py
+
+# Include compiled extensions
+recursive-include src/q21_referee *.so
+recursive-include src/q21_referee *.pyd
+
+# Include SDK (optional helper modules)
+recursive-include sdk *.py
+
+# Include examples
+recursive-include examples *.py
+
+# Exclude internal source files (will be compiled)
+exclude src/q21_referee/_*.py
+
+# Exclude build artifacts
+prune build
+prune dist
+prune *.egg-info
+prune __pycache__
+prune .pytest_cache
+recursive-exclude * *.pyc
+recursive-exclude * *.pyo
+recursive-exclude * __pycache__

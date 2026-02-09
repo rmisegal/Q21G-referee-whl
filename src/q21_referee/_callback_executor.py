@@ -20,8 +20,8 @@ from .errors import (
     InvalidJSONResponseError,
     SchemaValidationError,
 )
-from .validator import validate_output
-from .logging_config import log_and_terminate
+from ._validator import validate_output
+from ._logging_config import log_and_terminate
 
 logger = logging.getLogger("q21_referee.executor")
 

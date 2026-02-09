@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 import logging
 
-from .state import GameState, PlayerState
+from ._state import GameState, PlayerState
 
 logger = logging.getLogger("q21_referee.context")
 

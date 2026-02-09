@@ -12,11 +12,11 @@ import uuid
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
-from .state import GameState, GamePhase, PlayerState
+from ._state import GameState, GamePhase, PlayerState
 from .callbacks import RefereeAI
-from .envelope_builder import EnvelopeBuilder
-from .context_builder import ContextBuilder, SERVICE_DEFINITIONS
-from .callback_executor import execute_callback
+from ._envelope_builder import EnvelopeBuilder
+from ._context_builder import ContextBuilder, SERVICE_DEFINITIONS
+from ._callback_executor import execute_callback
 
 logger = logging.getLogger("q21_referee.router")
 

@@ -38,8 +38,11 @@ all = [
 Repository = "https://github.com/OmryTzabbar1/q21-referee-sdk"
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=61.0", "wheel", "Cython>=3.0"]
+build-backend = "setuptools.build_meta"
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/q21_referee", "sdk"]
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+q21_referee = ["*.so", "*.pyd"]

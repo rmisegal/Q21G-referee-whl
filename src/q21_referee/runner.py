@@ -16,11 +16,11 @@ import sys
 from typing import Dict, Any, Optional
 
 from .callbacks import RefereeAI
-from .email_client import EmailClient
-from .state import GameState, GamePhase, PlayerState
-from .envelope_builder import EnvelopeBuilder
-from .message_router import MessageRouter
-from .logging_config import setup_logging
+from ._email_client import EmailClient
+from ._state import GameState, GamePhase, PlayerState
+from ._envelope_builder import EnvelopeBuilder
+from ._message_router import MessageRouter
+from ._logging_config import setup_logging
 
 logger = logging.getLogger("q21_referee")
 
