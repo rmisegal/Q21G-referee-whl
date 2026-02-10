@@ -11,18 +11,25 @@ A browser will open for you to grant permission.
 Usage:
     python authenticate.py
 
-Prerequisites:
-    1. Download credentials.json from Google Cloud Console
-    2. Place it in this directory (or set GMAIL_CREDENTIALS_PATH)
+The script reads credentials path from (in order):
+    1. config.json (if exists)
+    2. .env file (if exists)
+    3. Environment variables
+    4. Default: credentials.json
 
 After running:
     - token.json will be created
     - You can run the referee without browser prompts
 """
 
+import json
 import os
 import sys
 from pathlib import Path
+
+# Load .env file if exists
+from dotenv import load_dotenv
+load_dotenv()
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -134,6 +141,22 @@ def verify_connection(creds: Credentials) -> bool:
         return False
 
 
+def load_paths_from_config() -> tuple:
+    """Load credentials and token paths from config.json if exists."""
+    config_file = Path("config.json")
+    if config_file.exists():
+        try:
+            with open(config_file) as f:
+                config = json.load(f)
+            return (
+                config.get("credentials_path"),
+                config.get("token_path"),
+            )
+        except Exception:
+            pass
+    return None, None
+
+
 def main():
     """Main entry point."""
     print()
@@ -142,9 +165,23 @@ def main():
     print("=" * 50)
     print()
 
-    # Get paths from environment or use defaults
-    creds_path = os.environ.get("GMAIL_CREDENTIALS_PATH", "credentials.json")
-    token_path = os.environ.get("GMAIL_TOKEN_PATH", "token.json")
+    # Try config.json first, then env vars, then defaults
+    config_creds, config_token = load_paths_from_config()
+
+    creds_path = (
+        config_creds
+        or os.environ.get("GMAIL_CREDENTIALS_PATH")
+        or "credentials.json"
+    )
+    token_path = (
+        config_token
+        or os.environ.get("GMAIL_TOKEN_PATH")
+        or "token.json"
+    )
+
+    print(f"Credentials: {creds_path}")
+    print(f"Token: {token_path}")
+    print()
 
     success = authenticate(creds_path, token_path)
     return 0 if success else 1
