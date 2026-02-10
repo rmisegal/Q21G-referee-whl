@@ -1,6 +1,6 @@
 [project]
 name = "q21-referee"
-version = "1.0.0"
+version = "2.0.0"
 description = "Q21 Referee SDK - Implement AI callbacks for the Q21 League game"
 readme = "README.md"
 requires-python = ">=3.10"
