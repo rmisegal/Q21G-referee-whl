@@ -16,7 +16,23 @@ pip install -e .
 
 ### Step 2: Configure Credentials
 
-Create a `config.json` file with your Gmail credentials:
+Run the setup script to generate `config.json` and `.env` files:
+
+```bash
+python setup_config.py
+```
+
+The script will prompt you for:
+- Gmail address and App Password
+- Referee ID and Group ID
+- League Manager email
+
+> **Note:** You need a [Gmail App Password](https://support.google.com/accounts/answer/185833), not your regular password.
+
+<details>
+<summary>Manual configuration (alternative)</summary>
+
+Create `config.json` manually:
 
 ```json
 {
@@ -28,7 +44,7 @@ Create a `config.json` file with your Gmail credentials:
 }
 ```
 
-> **Note:** Use a [Gmail App Password](https://support.google.com/accounts/answer/185833), not your regular password.
+</details>
 
 ### Step 3: Run in Demo Mode
 
