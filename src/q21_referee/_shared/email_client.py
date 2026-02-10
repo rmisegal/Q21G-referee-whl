@@ -34,6 +34,8 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
+from .protocol_logger import get_protocol_logger
+
 logger = logging.getLogger("q21_referee.email")
 
 # Gmail API scopes
@@ -202,9 +204,21 @@ class EmailClient:
             body_json = self._get_json_from_attachments(msg)
 
         if body_json:
-            logger.info(f"Parsed JSON with message_type: {body_json.get('message_type', 'N/A')}")
+            logger.debug(f"Parsed JSON with message_type: {body_json.get('message_type', 'N/A')}")
+            # Log protocol RECEIVED message
+            protocol_logger = get_protocol_logger()
+            message_type = body_json.get("message_type", "")
+            # Extract game_id from payload if present
+            game_id = body_json.get("payload", {}).get("game_id", "")
+            if not game_id:
+                game_id = body_json.get("game_id", "")
+            protocol_logger.log_received(
+                email=from_addr,
+                message_type=message_type,
+                game_id=game_id if game_id else None,
+            )
         else:
-            logger.info(f"No JSON found in body, checking attachments...")
+            logger.debug(f"No JSON found in body, checking attachments...")
 
         return {
             "uid": msg["id"],
@@ -321,7 +335,19 @@ class EmailClient:
             ).execute()
 
             short_subj = subject.split("::")[-1] if "::" in subject else subject
-            logger.info(f"Sent [{short_subj}] → {to_email}")
+            logger.debug(f"Sent [{short_subj}] → {to_email}")
+
+            # Log protocol SENT message
+            protocol_logger = get_protocol_logger()
+            message_type = body_dict.get("message_type", "")
+            game_id = body_dict.get("payload", {}).get("game_id", "")
+            if not game_id:
+                game_id = body_dict.get("game_id", "")
+            protocol_logger.log_sent(
+                email=to_email,
+                message_type=message_type,
+                game_id=game_id if game_id else None,
+            )
             return True
 
         except Exception as e:

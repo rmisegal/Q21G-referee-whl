@@ -6,6 +6,7 @@ q21_referee._shared.logging_config — Structured logging setup
 
 Configures dual logging: terminal (colored) + file (JSON).
 Provides error logging and termination functions.
+Protocol logging mode suppresses standard logs on terminal.
 """
 
 from __future__ import annotations
@@ -21,6 +22,23 @@ if TYPE_CHECKING:
 
 # Package logger
 logger = logging.getLogger("q21_referee")
+
+# Flag to control protocol-only terminal output
+_protocol_mode_enabled = False
+
+
+class ProtocolFilter(logging.Filter):
+    """Filter that suppresses all logs when protocol mode is enabled.
+
+    In protocol mode, we use direct print() for formatted protocol output
+    instead of the standard logging handlers.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        global _protocol_mode_enabled
+        # Suppress all terminal logs in protocol mode
+        # (protocol output is handled via direct print())
+        return not _protocol_mode_enabled
 
 
 class TerminalFormatter(logging.Formatter):
@@ -84,6 +102,8 @@ def setup_logging(
         fmt="%(asctime)s │ %(levelname)s │ %(name)s │ %(message)s",
         datefmt="%H:%M:%S",
     ))
+    # Add filter to suppress logs in protocol mode
+    terminal_handler.addFilter(ProtocolFilter())
     pkg_logger.addHandler(terminal_handler)
 
     # File handler with JSON
@@ -141,3 +161,27 @@ def log_and_terminate(error: "Q21RefereeError", exit_code: int = 1) -> None:
     log_callback_error(error)
     logger.critical("Process terminated due to callback error")
     sys.exit(exit_code)
+
+
+def enable_protocol_mode() -> None:
+    """
+    Enable protocol logging mode.
+
+    In protocol mode:
+    - Standard INFO logs are suppressed from terminal
+    - Only protocol messages (green) and callbacks (orange) are shown
+    - File logging remains unchanged for debugging
+    """
+    global _protocol_mode_enabled
+    _protocol_mode_enabled = True
+
+
+def disable_protocol_mode() -> None:
+    """Disable protocol logging mode (restore standard logging)."""
+    global _protocol_mode_enabled
+    _protocol_mode_enabled = False
+
+
+def is_protocol_mode_enabled() -> bool:
+    """Check if protocol mode is enabled."""
+    return _protocol_mode_enabled

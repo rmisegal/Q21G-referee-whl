@@ -14,7 +14,13 @@ import signal
 from typing import Dict, Any, List, Tuple
 
 from .callbacks import RefereeAI
-from ._shared import EmailClient, setup_logging, build_subject
+from ._shared import (
+    EmailClient,
+    setup_logging,
+    build_subject,
+    enable_protocol_mode,
+    get_protocol_logger,
+)
 from ._rlgm.orchestrator import RLGMOrchestrator
 from ._runner_config import (
     INCOMING_MESSAGE_TYPES,
@@ -56,6 +62,10 @@ class RLGMRunner:
         self.orchestrator = RLGMOrchestrator(config=config, ai=ai)
 
         self.poll_interval = config.get("poll_interval_seconds", 5)
+
+        # Enable protocol logging mode (suppresses standard logs on terminal)
+        enable_protocol_mode()
+        self._protocol_logger = get_protocol_logger()
 
     def run(self) -> None:
         """Start the RLGM event loop. Blocks until interrupted."""
@@ -99,23 +109,30 @@ class RLGMRunner:
             body = msg.get("body_json")
 
             if not body:
-                logger.warning(f"Skipped (no JSON): {subject} from {from_addr}")
+                logger.debug(f"Skipped (no JSON): {subject} from {from_addr}")
                 continue
 
             message_type = body.get("message_type", "")
             sender = body.get("sender", {}).get("email", from_addr)
 
             if message_type not in INCOMING_MESSAGE_TYPES:
-                logger.warning(f"Skipped (unknown type '{message_type}'): {subject}")
+                logger.debug(f"Skipped (unknown type '{message_type}'): {subject}")
                 continue
 
-            logger.info(f"── Received: {message_type} from {sender}")
+            logger.debug(f"── Received: {message_type} from {sender}")
 
             try:
                 outgoing = self._route_message(message_type, body, sender)
+                # Update protocol logger with game context if game is active
+                if self.orchestrator.current_game:
+                    gprm = self.orchestrator.current_game.gprm
+                    if gprm and gprm.game_id:
+                        self._protocol_logger.set_game_id(gprm.game_id)
+                        self._protocol_logger.set_role_active(True)
                 self._send_messages(outgoing)
             except Exception as e:
                 logger.error(f"Router error: {e}", exc_info=True)
+                self._protocol_logger.log_error(str(e))
 
     def _route_message(
         self, message_type: str, body: dict, sender: str

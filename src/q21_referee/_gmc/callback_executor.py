@@ -24,6 +24,7 @@ from ..errors import (
 )
 from .validator import validate_output, apply_score_feedback_penalties
 from .._shared.logging_config import log_and_terminate
+from .._shared.protocol_logger import get_protocol_logger
 
 logger = logging.getLogger("q21_referee.executor")
 
@@ -97,7 +98,9 @@ def execute_callback(
     SchemaValidationError
         If output fails validation (only if terminate_on_error=False).
     """
-    logger.info(f"[CALLBACK] Executing {callback_name} (timeout={deadline_seconds}s)")
+    logger.debug(f"[CALLBACK] Executing {callback_name} (timeout={deadline_seconds}s)")
+    protocol_logger = get_protocol_logger()
+    protocol_logger.log_callback_call(callback_name)
 
     # ── Step 1: Execute with timeout ──────────────────────────
     try:
@@ -136,7 +139,8 @@ def execute_callback(
     if callback_name == "score_feedback":
         result = apply_score_feedback_penalties(result)
 
-    logger.info(f"[CALLBACK] {callback_name} completed successfully")
+    logger.debug(f"[CALLBACK] {callback_name} completed successfully")
+    protocol_logger.log_callback_response(callback_name)
     return result
 
 
