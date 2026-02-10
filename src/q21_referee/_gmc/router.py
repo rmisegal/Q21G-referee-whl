@@ -84,13 +84,13 @@ class MessageRouter:
         if message_type == "BROADCAST_NEW_LEAGUE_ROUND":
             return handle_new_round(ctx)
 
-        elif message_type == "Q21WARMUPRESPONSE":
+        elif message_type in ("Q21WARMUPRESPONSE", "Q21_WARMUP_RESPONSE"):
             return handle_warmup_response(ctx)
 
-        elif message_type == "Q21QUESTIONSBATCH":
+        elif message_type in ("Q21QUESTIONSBATCH", "Q21_QUESTIONS_BATCH"):
             return handle_questions(ctx)
 
-        elif message_type == "Q21GUESSSUBMISSION":
+        elif message_type in ("Q21GUESSSUBMISSION", "Q21_GUESS_SUBMISSION"):
             return handle_guess(ctx)
 
         else:

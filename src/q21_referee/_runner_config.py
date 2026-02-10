@@ -21,10 +21,13 @@ INCOMING_MESSAGE_TYPES = {
     "BROADCAST_END_LEAGUE_ROUND",
     "BROADCAST_END_SEASON",
     "BROADCAST_KEEP_ALIVE",
-    # Player messages
+    # Player messages (protocol: no underscores, but accept both for compatibility)
     "Q21WARMUPRESPONSE",
+    "Q21_WARMUP_RESPONSE",
     "Q21QUESTIONSBATCH",
+    "Q21_QUESTIONS_BATCH",
     "Q21GUESSSUBMISSION",
+    "Q21_GUESS_SUBMISSION",
     # End
     "LEAGUE_COMPLETED",
 }
@@ -60,6 +63,9 @@ def is_player_message(message_type: str) -> bool:
     """Check if message is from a player."""
     return message_type in {
         "Q21WARMUPRESPONSE",
+        "Q21_WARMUP_RESPONSE",
         "Q21QUESTIONSBATCH",
+        "Q21_QUESTIONS_BATCH",
         "Q21GUESSSUBMISSION",
+        "Q21_GUESS_SUBMISSION",
     }
