@@ -175,7 +175,7 @@ class EmailClient:
         subject = headers.get("Subject", "")
         from_addr = headers.get("From", "")
 
-        logger.debug(f"Processing email: {subject} from {from_addr}")
+        logger.info(f"Processing email: {subject} from {from_addr}")
 
         # Extract body
         body = self._get_body(msg["payload"])
@@ -193,9 +193,9 @@ class EmailClient:
             body_json = self._get_json_from_attachments(msg)
 
         if body_json:
-            logger.debug(f"Parsed JSON with message_type: {body_json.get('message_type', 'N/A')}")
+            logger.info(f"Parsed JSON with message_type: {body_json.get('message_type', 'N/A')}")
         else:
-            logger.debug(f"No JSON found in email: {subject}")
+            logger.info(f"No JSON found in body, checking attachments...")
 
         return {
             "uid": msg["id"],
@@ -210,9 +210,19 @@ class EmailClient:
         payload = msg.get("payload", {})
         parts = payload.get("parts", [])
 
+        logger.info(f"Checking {len(parts)} parts for JSON attachments")
+
         for part in parts:
             filename = part.get("filename", "")
             mime_type = part.get("mimeType", "")
+
+            logger.info(f"  Part: filename='{filename}', mimeType='{mime_type}'")
+
+            # Check nested parts (multipart emails)
+            if part.get("parts"):
+                nested_result = self._get_json_from_attachments({"payload": part})
+                if nested_result:
+                    return nested_result
 
             # Look for JSON attachments
             if filename.endswith(".json") or mime_type == "application/json":
