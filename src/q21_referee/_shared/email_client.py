@@ -10,8 +10,9 @@ Students never use this directly.
 
 Setup:
     1. Create OAuth credentials at https://console.cloud.google.com/
-    2. Download as credentials.json
+    2. Download as client_secret.json
     3. Set GMAIL_CREDENTIALS_PATH and GMAIL_TOKEN_PATH in .env
+       (use full paths including filename!)
     4. On first run, browser opens for OAuth consent
 """
 
@@ -58,12 +59,12 @@ class EmailClient:
         """Initialize Gmail client.
 
         Args:
-            credentials_path: Path to OAuth credentials.json
-            token_path: Path to store/load token.json
+            credentials_path: Full path to OAuth client_secret.json
+            token_path: Full path to store/load token.json
             address: Gmail address (for logging, auto-detected from API)
         """
         self.credentials_path = credentials_path or os.environ.get(
-            "GMAIL_CREDENTIALS_PATH", "credentials.json"
+            "GMAIL_CREDENTIALS_PATH", "client_secret.json"
         )
         self.token_path = token_path or os.environ.get(
             "GMAIL_TOKEN_PATH", "token.json"

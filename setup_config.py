@@ -62,14 +62,17 @@ def get_config_values() -> dict:
     print("1. Go to https://console.cloud.google.com/")
     print("2. Create a project and enable Gmail API")
     print("3. Create OAuth 2.0 credentials (Desktop app)")
-    print("4. Download the credentials JSON file")
+    print("4. Download the credentials JSON file (client_secret.json)")
+    print()
+    print("WARNING: Enter the FULL path including the filename!")
+    print("  Example: /Users/yourname/projects/q21/client_secret.json")
     print()
 
     config["credentials_path"] = prompt(
-        "Path to credentials.json", default="credentials.json"
+        "Full path to client_secret.json", default="client_secret.json"
     )
     config["token_path"] = prompt(
-        "Path to store token.json", default="token.json"
+        "Full path to store token.json", default="token.json"
     )
 
     print_section("Referee Identity")
@@ -144,7 +147,7 @@ def main():
     print()
     print("Next steps:")
     print()
-    print("  1. Make sure credentials.json is in place")
+    print("  1. Make sure client_secret.json is at the path you specified")
     print()
     print("  2. Authenticate with Google:")
     print("     python authenticate.py")

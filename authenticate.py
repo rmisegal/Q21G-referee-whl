@@ -15,7 +15,7 @@ The script reads credentials path from (in order):
     1. config.json (if exists)
     2. .env file (if exists)
     3. Environment variables
-    4. Default: credentials.json
+    4. Default: client_secret.json
 
 After running:
     - token.json will be created
@@ -43,13 +43,13 @@ GMAIL_SCOPES = [
 ]
 
 
-def authenticate(credentials_path: str = "credentials.json",
+def authenticate(credentials_path: str = "client_secret.json",
                  token_path: str = "token.json") -> bool:
     """
     Authenticate with Gmail API and save token.
 
     Args:
-        credentials_path: Path to OAuth credentials.json
+        credentials_path: Path to OAuth client_secret.json
         token_path: Path to save token.json
 
     Returns:
@@ -60,9 +60,9 @@ def authenticate(credentials_path: str = "credentials.json",
 
     # Check for credentials file
     if not creds_path.exists():
-        print(f"Error: credentials.json not found at {creds_path.absolute()}")
+        print(f"Error: client_secret.json not found at {creds_path.absolute()}")
         print()
-        print("To get credentials.json:")
+        print("To get client_secret.json:")
         print("  1. Go to https://console.cloud.google.com/")
         print("  2. Create a project (or select existing)")
         print("  3. Enable the Gmail API:")
@@ -72,7 +72,10 @@ def authenticate(credentials_path: str = "credentials.json",
         print("     - Go to 'APIs & Services' → 'Credentials'")
         print("     - Click 'Create Credentials' → 'OAuth client ID'")
         print("     - Select 'Desktop app'")
-        print("     - Download and save as 'credentials.json'")
+        print("     - Download and save as 'client_secret.json'")
+        print()
+        print("NOTE: Make sure to specify the FULL path including the filename!")
+        print("  Example: /Users/yourname/projects/q21/client_secret.json")
         return False
 
     creds = None
@@ -171,7 +174,7 @@ def main():
     creds_path = (
         config_creds
         or os.environ.get("GMAIL_CREDENTIALS_PATH")
-        or "credentials.json"
+        or "client_secret.json"
     )
     token_path = (
         config_token
