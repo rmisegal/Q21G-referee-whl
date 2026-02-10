@@ -10,7 +10,35 @@ A Python SDK for implementing Q21 League referee AI. Students implement 4 callba
 pip install git+https://github.com/OmryTzabbar1/q21-referee-sdk.git
 ```
 
-## Quick Start
+## Quick Start with DemoAI
+
+Run immediately after cloning - no implementation needed:
+
+```python
+from q21_referee import DemoAI, RLGMRunner
+
+config = {
+    "referee_email": "your.referee@gmail.com",
+    "referee_password": "your-app-password",
+    "referee_id": "REF001",
+    "group_id": "GROUP_01",
+    "display_name": "Demo Referee",
+    "league_manager_email": "league.manager@example.com",
+}
+
+# DemoAI provides working defaults - no callbacks to implement
+runner = RLGMRunner(config=config, ai=DemoAI())
+runner.run()
+```
+
+`DemoAI` reads from pre-written demo files in `demo_data/` and handles all game logic automatically. Use it to:
+- Verify your setup works before writing any code
+- Understand the game flow
+- Test email connectivity
+
+## Custom Implementation
+
+Once ready to implement your own AI:
 
 ```python
 from q21_referee import RefereeAI, RLGMRunner
