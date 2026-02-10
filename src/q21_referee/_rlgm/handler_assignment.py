@@ -58,17 +58,22 @@ class BroadcastAssignmentTableHandler(BaseBroadcastHandler):
 
         self.log_handling("BROADCAST_ASSIGNMENT_TABLE", broadcast_id)
 
-        # Extract and filter assignments
+        # Extract assignments - find games where we are the referee
         all_assignments = payload.get("assignments", [])
-        my_group_id = self.config.get("group_id", "")
+        my_email = self.config.get("referee_email", "")
 
-        self.assignments = [
-            a for a in all_assignments if a.get("group_id") == my_group_id
-        ]
+        # Find game_ids where we are assigned as referee
+        my_game_ids = set()
+        for a in all_assignments:
+            if a.get("role") == "referee" and a.get("email") == my_email:
+                my_game_ids.add(a.get("game_id"))
+
+        # Build complete game assignments with all participants
+        self.assignments = self._build_game_assignments(all_assignments, my_game_ids)
 
         logger.info(
             f"Received {len(all_assignments)} total assignments, "
-            f"{len(self.assignments)} for group {my_group_id}"
+            f"{len(self.assignments)} games for referee {my_email}"
         )
 
         # Only transition if we have assignments
@@ -108,16 +113,30 @@ class BroadcastAssignmentTableHandler(BaseBroadcastHandler):
             message_id=tx_id,
         )
 
+    def _build_game_assignments(
+        self, all_assignments: List[Dict], my_game_ids: set
+    ) -> List[Dict[str, Any]]:
+        """Build complete game assignments with all participants."""
+        games = {}
+        for a in all_assignments:
+            game_id = a.get("game_id")
+            if game_id not in my_game_ids:
+                continue
+            if game_id not in games:
+                # Parse round from game_id (format SSRRGGG)
+                round_num = int(game_id[2:4]) if len(game_id) >= 4 else 0
+                games[game_id] = {"game_id": game_id, "round_number": round_num}
+            role = a.get("role")
+            if role == "player1":
+                games[game_id]["player1_email"] = a.get("email")
+                games[game_id]["player1_id"] = a.get("group_id")
+            elif role == "player2":
+                games[game_id]["player2_email"] = a.get("email")
+                games[game_id]["player2_id"] = a.get("group_id")
+        return list(games.values())
+
     def get_assignment_for_round(self, round_number: int) -> Optional[Dict[str, Any]]:
-        """
-        Get assignment for a specific round.
-
-        Args:
-            round_number: The round number to look up
-
-        Returns:
-            Assignment dict if found, None otherwise
-        """
+        """Get assignment for a specific round (parsed from game_id)."""
         for assignment in self.assignments:
             if assignment.get("round_number") == round_number:
                 return assignment
