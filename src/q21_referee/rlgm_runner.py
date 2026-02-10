@@ -14,7 +14,7 @@ import signal
 from typing import Dict, Any, List, Tuple
 
 from .callbacks import RefereeAI
-from ._shared import EmailClient, setup_logging
+from ._shared import EmailClient, setup_logging, build_subject
 from ._rlgm.orchestrator import RLGMOrchestrator
 from ._runner_config import (
     INCOMING_MESSAGE_TYPES,
@@ -64,6 +64,10 @@ class RLGMRunner:
 
         self._log_startup()
         self.email_client.connect_imap()
+
+        # Update config with actual email address from Gmail API
+        if self.email_client.address:
+            self.config["referee_email"] = self.email_client.address
 
         while self._running:
             try:
@@ -121,7 +125,17 @@ class RLGMRunner:
             result = self.orchestrator.handle_lm_message(body)
             if result:
                 lm_email = self.config.get("league_manager_email", "")
-                return [(result, f"RE: {message_type}", lm_email)]
+                # Build protocol-compliant subject
+                response_type = result.get("message_type", "RESPONSE")
+                referee_email = self.email_client.address or ""
+                tx_id = result.get("message_id", "")
+                subject = build_subject(
+                    role="REFEREE",
+                    email=referee_email,
+                    message_type=response_type,
+                    tx_id=tx_id,
+                )
+                return [(result, subject, lm_email)]
             return []
         elif is_player_message(message_type):
             return self.orchestrator.route_player_message(message_type, body, sender)

@@ -20,7 +20,12 @@ import base64
 import json
 import logging
 import os
+import uuid
+from datetime import datetime, timezone
+from email.mime.base import MIMEBase
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email import encoders
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 
@@ -270,17 +275,41 @@ class EmailClient:
                     return result
         return ""
 
-    def send(self, to_email: str, subject: str, body_dict: dict) -> bool:
-        """Send a protocol message as email."""
+    def send(
+        self,
+        to_email: str,
+        subject: str,
+        body_dict: dict,
+        attachment_filename: str = "payload.json",
+    ) -> bool:
+        """Send a protocol message as email with JSON attachment.
+
+        Per UNIFIED_PROTOCOL.md:
+        - Body is empty
+        - JSON payload is sent as attachment (payload.json)
+        """
         if not self._service:
             self._connect()
 
         try:
-            body_json = json.dumps(body_dict, indent=2)
-
-            msg = MIMEText(body_json, "plain", "utf-8")
+            # Create multipart message
+            msg = MIMEMultipart()
             msg["To"] = to_email
             msg["Subject"] = subject
+
+            # Empty body per protocol
+            msg.attach(MIMEText("", "plain", "utf-8"))
+
+            # Add JSON as attachment
+            json_content = json.dumps(body_dict, indent=2)
+            attachment = MIMEBase("application", "json")
+            attachment.set_payload(json_content.encode("utf-8"))
+            encoders.encode_base64(attachment)
+            attachment.add_header(
+                "Content-Disposition",
+                f"attachment; filename={attachment_filename}",
+            )
+            msg.attach(attachment)
 
             raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
             self._service.users().messages().send(
