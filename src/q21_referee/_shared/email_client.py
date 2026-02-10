@@ -175,16 +175,27 @@ class EmailClient:
         subject = headers.get("Subject", "")
         from_addr = headers.get("From", "")
 
+        logger.debug(f"Processing email: {subject} from {from_addr}")
+
         # Extract body
         body = self._get_body(msg["payload"])
 
-        # Try to parse as JSON
+        # Try to parse body as JSON first
         body_json = None
         if body:
             try:
                 body_json = json.loads(body.strip())
             except (json.JSONDecodeError, ValueError):
                 pass
+
+        # If no JSON in body, check attachments
+        if not body_json:
+            body_json = self._get_json_from_attachments(msg)
+
+        if body_json:
+            logger.debug(f"Parsed JSON with message_type: {body_json.get('message_type', 'N/A')}")
+        else:
+            logger.debug(f"No JSON found in email: {subject}")
 
         return {
             "uid": msg["id"],
@@ -193,6 +204,44 @@ class EmailClient:
             "body_json": body_json,
             "raw_body": body,
         }
+
+    def _get_json_from_attachments(self, msg: dict) -> Optional[Dict[str, Any]]:
+        """Extract JSON from email attachments."""
+        payload = msg.get("payload", {})
+        parts = payload.get("parts", [])
+
+        for part in parts:
+            filename = part.get("filename", "")
+            mime_type = part.get("mimeType", "")
+
+            # Look for JSON attachments
+            if filename.endswith(".json") or mime_type == "application/json":
+                body_data = part.get("body", {})
+                attachment_id = body_data.get("attachmentId")
+
+                if attachment_id:
+                    # Fetch attachment content
+                    try:
+                        att = self._service.users().messages().attachments().get(
+                            userId="me",
+                            messageId=msg["id"],
+                            id=attachment_id,
+                        ).execute()
+                        data = att.get("data", "")
+                        if data:
+                            content = base64.urlsafe_b64decode(data).decode("utf-8")
+                            return json.loads(content)
+                    except Exception as e:
+                        logger.warning(f"Failed to get attachment {filename}: {e}")
+                elif body_data.get("data"):
+                    # Inline attachment
+                    try:
+                        content = base64.urlsafe_b64decode(body_data["data"]).decode("utf-8")
+                        return json.loads(content)
+                    except Exception as e:
+                        logger.warning(f"Failed to parse inline attachment: {e}")
+
+        return None
 
     def _get_body(self, payload: dict) -> str:
         """Extract text body from message payload."""

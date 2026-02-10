@@ -90,14 +90,19 @@ class RLGMRunner:
     def _poll_and_process(self) -> None:
         """Single poll iteration: get emails → route → send."""
         for msg in self.email_client.poll():
+            subject = msg.get("subject", "")
+            from_addr = msg.get("from", "")
             body = msg.get("body_json")
+
             if not body:
+                logger.warning(f"Skipped (no JSON): {subject} from {from_addr}")
                 continue
 
             message_type = body.get("message_type", "")
-            sender = body.get("sender", {}).get("email", msg.get("from", ""))
+            sender = body.get("sender", {}).get("email", from_addr)
 
             if message_type not in INCOMING_MESSAGE_TYPES:
+                logger.warning(f"Skipped (unknown type '{message_type}'): {subject}")
                 continue
 
             logger.info(f"── Received: {message_type} from {sender}")
