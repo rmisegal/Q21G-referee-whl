@@ -93,7 +93,8 @@ CALLBACK_DISPLAY_NAMES = {
 class ProtocolLogger:
     """Logger for protocol messages and callbacks."""
 
-    def __init__(self, role_active: bool = True):
+    def __init__(self, role_active: bool = False):
+        # Default to INACTIVE - only ACTIVE when assigned to current round
         self.role_active = role_active
         self._current_game_id: str = "0000000"
 

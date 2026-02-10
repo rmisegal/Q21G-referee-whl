@@ -82,7 +82,8 @@ class TestProtocolLogger:
     def test_logger_creation(self):
         """Test that logger can be created."""
         logger = ProtocolLogger()
-        assert logger.role_active is True
+        # Default to INACTIVE - only ACTIVE when assigned to current round
+        assert logger.role_active is False
         assert logger._current_game_id == "0000000"
 
     def test_set_game_id(self):
