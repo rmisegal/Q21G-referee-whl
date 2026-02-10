@@ -4,50 +4,21 @@ Version: 2.0.0
 
 A Python SDK for implementing Q21 League referee AI. Students implement 4 callback methods to create their referee logic.
 
-## Installation
+## Getting Started
+
+### Step 1: Clone and Install
 
 ```bash
-pip install git+https://github.com/OmryTzabbar1/q21-referee-sdk.git
-```
-
-## Quick Start with DemoAI
-
-Run immediately after cloning - no implementation needed:
-
-```python
-from q21_referee import DemoAI, RLGMRunner
-
-config = {
-    "referee_email": "your.referee@gmail.com",
-    "referee_password": "your-app-password",
-    "referee_id": "REF001",
-    "group_id": "GROUP_01",
-    "display_name": "Demo Referee",
-    "league_manager_email": "league.manager@example.com",
-}
-
-# DemoAI provides working defaults - no callbacks to implement
-runner = RLGMRunner(config=config, ai=DemoAI())
-runner.run()
-```
-
-`DemoAI` reads from pre-written demo files in `demo_data/` and handles all game logic automatically. Use it to:
-- Verify your setup works before writing any code
-- Understand the game flow
-- Test email connectivity
-
-### Command Line Demo Mode
-
-Run demo mode directly from the command line:
-
-```bash
-# Clone and install
 git clone https://github.com/OmryTzabbar1/q21-referee-sdk.git
 cd q21-referee-sdk
 pip install -e .
+```
 
-# Create config file
-cat > config.json << 'EOF'
+### Step 2: Configure Credentials
+
+Create a `config.json` file with your Gmail credentials:
+
+```json
 {
     "referee_email": "your.referee@gmail.com",
     "referee_password": "your-app-password",
@@ -55,28 +26,60 @@ cat > config.json << 'EOF'
     "group_id": "GROUP_01",
     "league_manager_email": "league.manager@example.com"
 }
-EOF
+```
 
-# Run in demo mode
+> **Note:** Use a [Gmail App Password](https://support.google.com/accounts/answer/185833), not your regular password.
+
+### Step 3: Run in Demo Mode
+
+Test your setup immediately with the `--demo` argument (no code required):
+
+```bash
 python -m q21_referee --demo --config config.json
 ```
 
+This runs the referee using `DemoAI`, which provides pre-written responses from `demo_data/`. Use demo mode to:
+- Verify your setup works before writing any code
+- Understand the game flow
+- Test email connectivity
+
+### Step 4: Implement Your AI
+
+Once demo mode works, implement your own referee logic (see [Custom Implementation](#custom-implementation) below).
+
+---
+
+## Demo Mode
+
+Demo mode lets you run the referee without implementing any callbacks.
+
 **Three ways to enable demo mode:**
 
-| Method | Example |
-|--------|---------|
-| Command line | `python -m q21_referee --demo --config config.json` |
-| Config file | Add `"demo_mode": true` to config.json |
+| Method | How to Use |
+|--------|------------|
+| Command line argument | `python -m q21_referee --demo --config config.json` |
+| Config file | Add `"demo_mode": true` to your config.json |
 | Environment variable | `DEMO_MODE=true python -m q21_referee --config config.json` |
 
-**Command Line Arguments:**
+**All command line arguments:**
 
 | Argument | Description |
-|------|-------------|
+|----------|-------------|
 | `--demo` | Enable demo mode (use DemoAI) |
 | `--config FILE` | Path to JSON config file |
 | `--single-game` | Use RefereeRunner instead of RLGMRunner |
 | `--demo-path PATH` | Custom path to demo data files |
+
+**Using DemoAI in Python code:**
+
+```python
+from q21_referee import DemoAI, RLGMRunner
+
+runner = RLGMRunner(config=config, ai=DemoAI())
+runner.run()
+```
+
+---
 
 ## Custom Implementation
 
