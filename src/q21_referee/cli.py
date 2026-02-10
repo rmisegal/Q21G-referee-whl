@@ -4,14 +4,14 @@
 q21_referee.cli — Command-line interface
 =========================================
 
-Provides CLI entry point for running the referee.
+Provides command line entry point for running the referee.
 
 Usage:
     python -m q21_referee --demo                    # Run in demo mode
     python -m q21_referee --config config.json      # Run with config file
 
 Demo mode can be enabled via:
-    1. CLI flag: --demo
+    1. Command line argument: --demo
     2. Config key: demo_mode: True
     3. Environment variable: DEMO_MODE=true
 """

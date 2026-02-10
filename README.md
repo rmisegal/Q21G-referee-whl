@@ -36,7 +36,7 @@ runner.run()
 - Understand the game flow
 - Test email connectivity
 
-### CLI Demo Mode
+### Command Line Demo Mode
 
 Run demo mode directly from the command line:
 
@@ -65,13 +65,13 @@ python -m q21_referee --demo --config config.json
 
 | Method | Example |
 |--------|---------|
-| CLI flag | `python -m q21_referee --demo --config config.json` |
-| Config key | Add `"demo_mode": true` to config.json |
-| Environment | `DEMO_MODE=true python -m q21_referee --config config.json` |
+| Command line | `python -m q21_referee --demo --config config.json` |
+| Config file | Add `"demo_mode": true` to config.json |
+| Environment variable | `DEMO_MODE=true python -m q21_referee --config config.json` |
 
-**CLI Options:**
+**Command Line Arguments:**
 
-| Flag | Description |
+| Argument | Description |
 |------|-------------|
 | `--demo` | Enable demo mode (use DemoAI) |
 | `--config FILE` | Path to JSON config file |
