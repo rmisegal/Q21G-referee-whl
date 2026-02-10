@@ -1,6 +1,8 @@
+# Area: GMC
+# PRD: docs/prd-rlgm.md
 """
-q21_referee.state — Game state tracker
-=======================================
+q21_referee._gmc.state — Game state tracker
+===========================================
 
 Tracks the lifecycle of a single game across all Q21 phases.
 Knows which players have responded at each stage, stores the

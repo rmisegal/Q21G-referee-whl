@@ -1,6 +1,8 @@
+# Area: Shared
+# PRD: docs/prd-rlgm.md
 """
-q21_referee.logging_config — Structured logging setup
-======================================================
+q21_referee._shared.logging_config — Structured logging setup
+=============================================================
 
 Configures dual logging: terminal (colored) + file (JSON).
 Provides error logging and termination functions.
@@ -15,7 +17,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .errors import Q21RefereeError
+    from ..errors import Q21RefereeError
 
 # Package logger
 logger = logging.getLogger("q21_referee")

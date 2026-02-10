@@ -1,6 +1,8 @@
+# Area: GMC
+# PRD: docs/prd-rlgm.md
 """
-q21_referee.callback_executor — Safe callback execution
-========================================================
+q21_referee._gmc.callback_executor — Safe callback execution
+============================================================
 
 Wraps callback invocation with:
 1. Timeout enforcement
@@ -15,13 +17,13 @@ import sys
 from typing import Any, Callable, Dict
 import logging
 
-from .errors import (
+from ..errors import (
     CallbackTimeoutError,
     InvalidJSONResponseError,
     SchemaValidationError,
 )
-from ._validator import validate_output
-from ._logging_config import log_and_terminate
+from .validator import validate_output
+from .._shared.logging_config import log_and_terminate
 
 logger = logging.getLogger("q21_referee.executor")
 

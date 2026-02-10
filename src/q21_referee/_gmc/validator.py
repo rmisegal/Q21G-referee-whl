@@ -1,6 +1,9 @@
+# Area: GMC
+# PRD: docs/prd-rlgm.md
+# NOTE: This file exceeds 150 lines and will be split in Part 22
 """
-q21_referee.validator — Output schema validation
-=================================================
+q21_referee._gmc.validator — Output schema validation
+=====================================================
 
 Validates callback outputs against expected schemas.
 Returns list of validation errors (empty if valid).

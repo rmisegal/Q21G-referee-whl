@@ -1,6 +1,9 @@
+# Area: GMC
+# PRD: docs/prd-rlgm.md
+# NOTE: This file is 212 lines - may need splitting in Part 22
 """
-q21_referee.envelope_builder — Constructs outgoing protocol messages
-=====================================================================
+q21_referee._gmc.envelope_builder — Constructs outgoing protocol messages
+=========================================================================
 
 Takes the clean dicts returned by student callbacks and wraps them
 in spec-compliant envelopes (§2) with proper email subjects (§3).

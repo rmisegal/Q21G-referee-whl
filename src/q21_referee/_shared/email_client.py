@@ -1,6 +1,8 @@
+# Area: Shared
+# PRD: docs/prd-rlgm.md
 """
-q21_referee.email_client — IMAP/SMTP email wrapper
-====================================================
+q21_referee._shared.email_client — IMAP/SMTP email wrapper
+==========================================================
 
 Handles all email I/O. The runner calls poll() to get new messages
 and send() to deliver outgoing messages. Students never use this directly.

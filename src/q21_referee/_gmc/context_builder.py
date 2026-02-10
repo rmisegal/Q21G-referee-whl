@@ -1,6 +1,9 @@
+# Area: GMC
+# PRD: docs/prd-rlgm.md
+# NOTE: This file is 257 lines - will be split in Part 22
 """
-q21_referee.context_builder — Build callback context dicts
-==========================================================
+q21_referee._gmc.context_builder — Build callback context dicts
+===============================================================
 
 Constructs the ctx dicts passed to student callbacks.
 Each ctx has two sections:
@@ -12,7 +15,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 import logging
 
-from ._state import GameState, PlayerState
+from .state import GameState, PlayerState
 
 logger = logging.getLogger("q21_referee.context")
 
