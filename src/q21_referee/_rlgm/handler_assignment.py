@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 from .handler_base import BaseBroadcastHandler
 from .state_machine import RLGMStateMachine
 from .enums import RLGMEvent
+from .._shared.protocol import build_envelope, generate_tx_id
 
 logger = logging.getLogger("q21_referee.rlgm.handler.assignment")
 
@@ -75,20 +76,37 @@ class BroadcastAssignmentTableHandler(BaseBroadcastHandler):
         if self.assignments:
             self.state_machine.transition(RLGMEvent.ASSIGNMENT_RECEIVED, force=True)
 
-        return self._build_acknowledgment(payload.get("season_id", ""))
+        return self._build_acknowledgment(
+            season_id=payload.get("season_id", ""),
+            league_id=message.get("league_id", ""),
+            correlation_id=broadcast_id,
+        )
 
-    def _build_acknowledgment(self, season_id: str) -> Dict[str, Any]:
-        """Build RESPONSE_GROUP_ASSIGNMENT message."""
-        return {
-            "message_type": "RESPONSE_GROUP_ASSIGNMENT",
-            "payload": {
+    def _build_acknowledgment(
+        self, season_id: str, league_id: str, correlation_id: str
+    ) -> Dict[str, Any]:
+        """Build RESPONSE_GROUP_ASSIGNMENT envelope per protocol."""
+        referee_email = self.config.get("referee_email", "")
+        tx_id = generate_tx_id("assign-ack")
+
+        return build_envelope(
+            message_type="RESPONSE_GROUP_ASSIGNMENT",
+            payload={
                 "status": "acknowledged",
                 "referee_id": self.config.get("referee_id", ""),
                 "group_id": self.config.get("group_id", ""),
                 "season_id": season_id,
                 "assignments_received": len(self.assignments),
             },
-        }
+            sender_email=referee_email,
+            sender_role="REFEREE",
+            sender_logical_id=self.config.get("referee_id"),
+            recipient_id="LEAGUEMANAGER",
+            correlation_id=correlation_id,
+            league_id=league_id,
+            season_id=season_id,
+            message_id=tx_id,
+        )
 
     def get_assignment_for_round(self, round_number: int) -> Optional[Dict[str, Any]]:
         """

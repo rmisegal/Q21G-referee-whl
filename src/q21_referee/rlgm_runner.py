@@ -128,7 +128,8 @@ class RLGMRunner:
                 # Build protocol-compliant subject
                 response_type = result.get("message_type", "RESPONSE")
                 referee_email = self.email_client.address or ""
-                tx_id = result.get("message_id", "")
+                # Use message_id if present, otherwise generate new tx_id
+                tx_id = result.get("message_id") or None
                 subject = build_subject(
                     role="REFEREE",
                     email=referee_email,
