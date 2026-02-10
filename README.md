@@ -60,24 +60,33 @@ Create `config.json` manually:
 
 </details>
 
-### Step 4: Run in Demo Mode
+### Step 4: Authenticate with Google
 
-Test your setup immediately with the `--demo` argument (no code required):
+Run the authentication script to connect your Gmail account:
+
+```bash
+python authenticate.py
+```
+
+This will:
+1. Open a browser for Google OAuth consent
+2. Ask you to grant Gmail permissions
+3. Create `token.json` automatically
+
+### Step 5: Run in Demo Mode
+
+Test your setup with the `--demo` argument (no code required):
 
 ```bash
 python -m q21_referee --demo --config config.json
 ```
-
-On first run, a browser will open for OAuth consent. After you approve:
-- `token.json` is created automatically
-- Future runs won't need browser authorization
 
 This runs the referee using `DemoAI`, which provides pre-written responses from `demo_data/`. Use demo mode to:
 - Verify your setup works before writing any code
 - Understand the game flow
 - Test email connectivity
 
-### Step 5: Implement Your AI
+### Step 6: Implement Your AI
 
 Once demo mode works, implement your own referee logic (see [Custom Implementation](#custom-implementation) below).
 
