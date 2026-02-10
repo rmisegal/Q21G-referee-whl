@@ -74,6 +74,25 @@ class GameManagementCycle:
             config=config,
         )
 
+    def initiate_game(self) -> List[Tuple[dict, str, str]]:
+        """
+        Initiate the game by sending warmup calls to both players.
+
+        Called by RLGM orchestrator after creating the GMC.
+
+        Returns:
+            List of (envelope, subject, recipient) tuples for warmup calls
+        """
+        # Build a synthetic message body with round info from GPRM
+        body = {
+            "message_type": "BROADCAST_NEW_LEAGUE_ROUND",
+            "payload": {
+                "round_id": self.gprm.round_id,
+                "round_number": self.gprm.round_number,
+            },
+        }
+        return self.router.route("BROADCAST_NEW_LEAGUE_ROUND", body, "")
+
     def route_message(
         self, message_type: str, body: dict, sender_email: str
     ) -> List[Tuple[dict, str, str]]:

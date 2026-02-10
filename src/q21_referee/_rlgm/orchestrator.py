@@ -58,6 +58,9 @@ class RLGMOrchestrator:
         # Assignments storage
         self._assignments: List[Dict[str, Any]] = []
 
+        # Pending outgoing player messages
+        self._pending_outgoing: List[Tuple[dict, str, str]] = []
+
         # Register handlers
         self._register_handlers()
 
@@ -115,7 +118,23 @@ class RLGMOrchestrator:
             # Update new round handler with assignments
             self._new_round_handler.assignments = self._assignments
 
+        # Handle new round - start game and initiate warmup
+        if message_type == "BROADCAST_NEW_LEAGUE_ROUND" and result:
+            gprm = result.get("gprm")
+            if gprm:
+                self.start_game(gprm)
+                # Initiate game sends warmup calls to players
+                warmup_msgs = self.current_game.initiate_game()
+                self._pending_outgoing.extend(warmup_msgs)
+            return None  # No email response to LM for new round
+
         return result
+
+    def get_pending_outgoing(self) -> List[Tuple[dict, str, str]]:
+        """Get and clear pending outgoing player messages."""
+        msgs = self._pending_outgoing
+        self._pending_outgoing = []
+        return msgs
 
     def start_game(self, gprm: GPRM) -> None:
         """

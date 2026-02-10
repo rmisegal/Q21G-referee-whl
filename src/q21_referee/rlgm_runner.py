@@ -121,6 +121,8 @@ class RLGMRunner:
         self, message_type: str, body: dict, sender: str
     ) -> List[Tuple[dict, str, str]]:
         """Route message to appropriate handler."""
+        outgoing = []
+
         if is_lm_message(message_type):
             result = self.orchestrator.handle_lm_message(body)
             if result:
@@ -136,11 +138,15 @@ class RLGMRunner:
                     message_type=response_type,
                     tx_id=tx_id,
                 )
-                return [(result, subject, lm_email)]
-            return []
+                outgoing.append((result, subject, lm_email))
+
+            # Check for pending player messages (e.g., warmup calls after new round)
+            outgoing.extend(self.orchestrator.get_pending_outgoing())
+
         elif is_player_message(message_type):
-            return self.orchestrator.route_player_message(message_type, body, sender)
-        return []
+            outgoing = self.orchestrator.route_player_message(message_type, body, sender)
+
+        return outgoing
 
     def _send_messages(self, outgoing: List[Tuple[dict, str, str]]) -> None:
         """Send outgoing messages."""
