@@ -135,18 +135,22 @@ class EmailClient:
         self._credentials = None
 
     def poll(self, **kwargs) -> List[Dict[str, Any]]:
-        """Poll inbox for new unread messages."""
+        """Poll inbox for new unread messages (oldest first)."""
         if not self._service:
             self._connect()
 
         messages = []
         try:
-            # Get unread messages
+            # Get unread messages (Gmail returns newest first)
             results = self._service.users().messages().list(
                 userId="me", q="is:unread", maxResults=50
             ).execute()
 
             msg_refs = results.get("messages", [])
+
+            # Reverse to process oldest first (chronological order)
+            # This ensures state machine receives messages in correct sequence
+            msg_refs = list(reversed(msg_refs))
 
             for ref in msg_refs:
                 try:
