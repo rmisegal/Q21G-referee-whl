@@ -206,18 +206,8 @@ class EmailClient:
 
         if body_json:
             logger.debug(f"Parsed JSON with message_type: {body_json.get('message_type', 'N/A')}")
-            # Log protocol RECEIVED message
-            protocol_logger = get_protocol_logger()
-            message_type = body_json.get("message_type", "")
-            # Extract game_id from payload if present
-            game_id = body_json.get("payload", {}).get("game_id", "")
-            if not game_id:
-                game_id = body_json.get("game_id", "")
-            protocol_logger.log_received(
-                email=from_addr,
-                message_type=message_type,
-                game_id=game_id if game_id else None,
-            )
+            # NOTE: Protocol logging for received messages is handled by rlgm_runner
+            # after it determines the game context
         else:
             logger.debug(f"No JSON found in body, checking attachments...")
 

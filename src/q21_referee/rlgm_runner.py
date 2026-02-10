@@ -122,9 +122,18 @@ class RLGMRunner:
             logger.debug(f"── Received: {message_type} from {sender}")
 
             try:
-                outgoing = self._route_message(message_type, body, sender)
-                # Update protocol logger with game context
+                # Update context BEFORE routing so RECEIVED log has correct context
                 self._update_protocol_logger_context(message_type, body)
+
+                # Log the received message with current context
+                self._protocol_logger.log_received(email=sender, message_type=message_type)
+
+                # Route the message (may create a game, updating context)
+                outgoing = self._route_message(message_type, body, sender)
+
+                # Update context again after routing (game may have been created)
+                self._update_protocol_logger_context_after_routing()
+
                 self._send_messages(outgoing)
             except Exception as e:
                 logger.error(f"Router error: {e}", exc_info=True)
@@ -164,7 +173,7 @@ class RLGMRunner:
     def _update_protocol_logger_context(
         self, message_type: str, body: dict
     ) -> None:
-        """Update protocol logger with current game context."""
+        """Update protocol logger context BEFORE routing (for RECEIVED log)."""
         # If we have an active game, use its context
         if self.orchestrator.current_game:
             gprm = self.orchestrator.current_game.gprm
@@ -173,19 +182,57 @@ class RLGMRunner:
                 self._protocol_logger.set_role_active(True)
                 return
 
-        # For new round broadcasts, update context even if not assigned
+        # For new round broadcasts, check assignments to determine context
         if message_type == "BROADCAST_NEW_LEAGUE_ROUND":
             payload = body.get("payload", {})
             round_number = payload.get("round_number", 0)
-            # Build placeholder game_id: SS RR 000 (no specific game)
-            # Format: 2-digit season + 2-digit round + 000
+
+            # Check if we have an assignment for this round
+            assignment = self._find_assignment_for_round(round_number)
+            if assignment:
+                # We're assigned - use game_id from assignment
+                game_id = assignment.get("game_id", "")
+                if game_id:
+                    self._protocol_logger.set_game_id(game_id)
+                    self._protocol_logger.set_role_active(True)
+                    return
+
+            # Not assigned - build placeholder game_id
             season_id = self.config.get("season_id", "01")
-            # Extract last 2 digits if season_id is longer
             season_suffix = str(season_id)[-2:] if len(str(season_id)) >= 2 else f"{season_id:02}"
             game_id = f"{season_suffix}{round_number:02d}000"
             self._protocol_logger.set_game_id(game_id)
-            # No active game means referee is inactive for this round
             self._protocol_logger.set_role_active(False)
+            return
+
+        # For assignment table, try to extract game_id from first assignment
+        if message_type == "BROADCAST_ASSIGNMENT_TABLE":
+            payload = body.get("payload", {})
+            assignments = payload.get("assignments", [])
+            if assignments and len(assignments) > 0:
+                first_assignment = assignments[0]
+                game_id = first_assignment.get("game_id", "")
+                if game_id:
+                    self._protocol_logger.set_game_id(game_id)
+                    # Still inactive until round actually starts
+                    self._protocol_logger.set_role_active(False)
+                    return
+
+    def _find_assignment_for_round(self, round_number: int) -> dict:
+        """Find assignment for the given round number."""
+        for assignment in self.orchestrator.get_assignments():
+            if assignment.get("round_number") == round_number:
+                return assignment
+        return {}
+
+    def _update_protocol_logger_context_after_routing(self) -> None:
+        """Update protocol logger context AFTER routing (for SENT logs)."""
+        # If a game was created during routing, use its context
+        if self.orchestrator.current_game:
+            gprm = self.orchestrator.current_game.gprm
+            if gprm and gprm.game_id:
+                self._protocol_logger.set_game_id(gprm.game_id)
+                self._protocol_logger.set_role_active(True)
 
     def _send_messages(self, outgoing: List[Tuple[dict, str, str]]) -> None:
         """Send outgoing messages."""
