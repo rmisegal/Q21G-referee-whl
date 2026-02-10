@@ -2,11 +2,15 @@
 q21_referee — Q21 League Referee Package
 =========================================
 
-Students only need to import two things:
+Two operating modes:
 
+1. Season Mode (RLGMRunner) - Full league integration:
+    from q21_referee import RLGMRunner, RefereeAI
+
+2. Single-Game Mode (RefereeRunner) - For testing:
     from q21_referee import RefereeRunner, RefereeAI
 
-Then subclass RefereeAI, implement 4 methods, and call RefereeRunner.run().
+Subclass RefereeAI, implement 4 methods, and call runner.run().
 
 Type Definitions
 ----------------
@@ -17,15 +21,11 @@ All input/output types are available for import:
         AnswersContext, AnswersResponse,
         ScoreFeedbackContext, ScoreFeedbackResponse,
     )
-
-Inspect fields with __annotations__:
-
-    >>> WarmupContext.__annotations__
-    {'round_number': int, 'round_id': str, 'game_id': str, ...}
 """
 
 from .callbacks import RefereeAI
 from .runner import RefereeRunner
+from .rlgm_runner import RLGMRunner
 from .errors import (
     Q21RefereeError,
     CallbackTimeoutError,
@@ -58,6 +58,7 @@ __all__ = [
     # Main classes
     "RefereeAI",
     "RefereeRunner",
+    "RLGMRunner",
     # Errors
     "Q21RefereeError",
     "CallbackTimeoutError",
@@ -83,4 +84,4 @@ __all__ = [
     "FeedbackMessages",
     "ScoreFeedbackResponse",
 ]
-__version__ = "1.0.0"
+__version__ = "2.0.0"
