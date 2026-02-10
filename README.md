@@ -36,6 +36,48 @@ runner.run()
 - Understand the game flow
 - Test email connectivity
 
+### CLI Demo Mode
+
+Run demo mode directly from the command line:
+
+```bash
+# Clone and install
+git clone https://github.com/OmryTzabbar1/q21-referee-sdk.git
+cd q21-referee-sdk
+pip install -e .
+
+# Create config file
+cat > config.json << 'EOF'
+{
+    "referee_email": "your.referee@gmail.com",
+    "referee_password": "your-app-password",
+    "referee_id": "REF001",
+    "group_id": "GROUP_01",
+    "league_manager_email": "league.manager@example.com"
+}
+EOF
+
+# Run in demo mode
+python -m q21_referee --demo --config config.json
+```
+
+**Three ways to enable demo mode:**
+
+| Method | Example |
+|--------|---------|
+| CLI flag | `python -m q21_referee --demo --config config.json` |
+| Config key | Add `"demo_mode": true` to config.json |
+| Environment | `DEMO_MODE=true python -m q21_referee --config config.json` |
+
+**CLI Options:**
+
+| Flag | Description |
+|------|-------------|
+| `--demo` | Enable demo mode (use DemoAI) |
+| `--config FILE` | Path to JSON config file |
+| `--single-game` | Use RefereeRunner instead of RLGMRunner |
+| `--demo-path PATH` | Custom path to demo data files |
+
 ## Custom Implementation
 
 Once ready to implement your own AI:
