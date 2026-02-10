@@ -55,12 +55,12 @@ class SeasonRegistrationResponseHandler(BaseBroadcastHandler):
 
         if status == "accepted":
             logger.info("Registration accepted - waiting for assignments")
-            self.state_machine.transition(RLGMEvent.REGISTRATION_ACCEPTED)
+            self.state_machine.transition(RLGMEvent.REGISTRATION_ACCEPTED, force=True)
 
         elif status == "rejected":
             reason = payload.get("reason", "Unknown reason")
             logger.warning(f"Registration rejected: {reason}")
-            self.state_machine.transition(RLGMEvent.REGISTRATION_REJECTED)
+            self.state_machine.transition(RLGMEvent.REGISTRATION_REJECTED, force=True)
 
         else:
             logger.warning(f"Unknown registration status: {status}")

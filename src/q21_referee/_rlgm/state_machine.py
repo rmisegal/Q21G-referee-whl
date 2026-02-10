@@ -67,20 +67,34 @@ class RLGMStateMachine:
         valid_transitions = TRANSITIONS.get(self.current_state, {})
         return event in valid_transitions
 
-    def transition(self, event: RLGMEvent) -> RLGMState:
+    def transition(self, event: RLGMEvent, force: bool = False) -> RLGMState:
         """
         Execute a state transition.
 
         Args:
             event: The event triggering the transition
+            force: If True, allow transition even if not valid (for out-of-order messages)
 
         Returns:
             The new state after transition
 
         Raises:
-            ValueError: If the transition is not valid from current state
+            ValueError: If the transition is not valid and force=False
         """
         if not self.can_transition(event):
+            if force:
+                # Log warning but allow transition for out-of-order messages
+                import logging
+                logger = logging.getLogger("q21_referee.rlgm.state_machine")
+                logger.warning(
+                    f"Forced transition: {event.value} from {self.current_state.value}"
+                )
+                # Try to find any state that accepts this event
+                for state, transitions in TRANSITIONS.items():
+                    if event in transitions:
+                        self.current_state = transitions[event]
+                        return self.current_state
+                return self.current_state
             raise ValueError(
                 f"Invalid transition: {event.value} from {self.current_state.value}"
             )

@@ -78,6 +78,13 @@ class RLGMOrchestrator:
         self.router.register_handler(
             "BROADCAST_ASSIGNMENT_TABLE", self._assignment_handler
         )
+        # New round handler needs access to assignments (via orchestrator reference)
+        self._new_round_handler = BroadcastNewRoundHandler(
+            self.state_machine, self.config, self._assignments
+        )
+        self.router.register_handler(
+            "BROADCAST_NEW_LEAGUE_ROUND", self._new_round_handler
+        )
         self.router.register_handler(
             "BROADCAST_END_LEAGUE_ROUND",
             BroadcastEndRoundHandler(self.state_machine),
@@ -105,6 +112,8 @@ class RLGMOrchestrator:
         # Update assignments if we received them
         if message_type == "BROADCAST_ASSIGNMENT_TABLE":
             self._assignments = self._assignment_handler.assignments
+            # Update new round handler with assignments
+            self._new_round_handler.assignments = self._assignments
 
         return result
 
@@ -154,7 +163,7 @@ class RLGMOrchestrator:
         result = self.current_game.get_result()
         if result:
             logger.info(f"Game complete: {result.match_id}, winner: {result.winner_id}")
-            self.state_machine.transition(RLGMEvent.GAME_COMPLETE)
+            self.state_machine.transition(RLGMEvent.GAME_COMPLETE, force=True)
 
         self.current_game = None
 

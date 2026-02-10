@@ -71,8 +71,9 @@ class BroadcastAssignmentTableHandler(BaseBroadcastHandler):
         )
 
         # Only transition if we have assignments
+        # Use force=True to handle out-of-order messages
         if self.assignments:
-            self.state_machine.transition(RLGMEvent.ASSIGNMENT_RECEIVED)
+            self.state_machine.transition(RLGMEvent.ASSIGNMENT_RECEIVED, force=True)
 
         return self._build_acknowledgment(payload.get("season_id", ""))
 

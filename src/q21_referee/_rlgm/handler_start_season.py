@@ -60,8 +60,8 @@ class BroadcastStartSeasonHandler(BaseBroadcastHandler):
 
         logger.info(f"Season starting: {season_id} in league {league_id}")
 
-        # Transition state machine
-        self.state_machine.transition(RLGMEvent.SEASON_START)
+        # Transition state machine (force=True for out-of-order tolerance)
+        self.state_machine.transition(RLGMEvent.SEASON_START, force=True)
 
         # Build registration request
         return self._build_registration_request(season_id, league_id)

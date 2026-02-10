@@ -57,8 +57,8 @@ class BroadcastEndSeasonHandler(BaseBroadcastHandler):
 
         logger.info(f"Season {season_id} completed")
 
-        # Transition to COMPLETED state
-        self.state_machine.transition(RLGMEvent.SEASON_END)
+        # Transition to COMPLETED state (force=True for out-of-order tolerance)
+        self.state_machine.transition(RLGMEvent.SEASON_END, force=True)
 
         # No response needed
         return None

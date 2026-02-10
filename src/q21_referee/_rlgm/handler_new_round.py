@@ -78,8 +78,8 @@ class BroadcastNewRoundHandler(BaseBroadcastHandler):
         # Build GPRM
         gprm = self._build_gprm(assignment, round_number, round_id)
 
-        # Transition to IN_GAME
-        self.state_machine.transition(RLGMEvent.ROUND_START)
+        # Transition to IN_GAME (force=True for out-of-order tolerance)
+        self.state_machine.transition(RLGMEvent.ROUND_START, force=True)
 
         return {
             "round_number": round_number,
