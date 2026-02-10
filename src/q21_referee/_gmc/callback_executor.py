@@ -22,7 +22,7 @@ from ..errors import (
     InvalidJSONResponseError,
     SchemaValidationError,
 )
-from .validator import validate_output
+from .validator import validate_output, apply_score_feedback_penalties
 from .._shared.logging_config import log_and_terminate
 
 logger = logging.getLogger("q21_referee.executor")
@@ -131,6 +131,10 @@ def execute_callback(
         if terminate_on_error:
             log_and_terminate(error)
         raise error
+
+    # ── Step 4: Apply soft constraint penalties ───────────────
+    if callback_name == "score_feedback":
+        result = apply_score_feedback_penalties(result)
 
     logger.info(f"[CALLBACK] {callback_name} completed successfully")
     return result

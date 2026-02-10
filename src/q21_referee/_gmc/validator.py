@@ -86,14 +86,18 @@ CALLBACK_SCHEMAS: Dict[str, Dict[str, Any]] = {
                     "opening_sentence": str,
                     "associative_word": str,
                 },
-                "constraints": {
-                    "opening_sentence": {"min_words": 150, "max_words": 200},
-                    "associative_word": {"min_words": 150, "max_words": 200},
-                },
+                # Word count is a soft constraint - checked separately with penalty
             },
         },
     },
 }
+
+# Soft constraints for score_feedback (apply penalty instead of failing)
+SCORE_FEEDBACK_WORD_LIMITS = {
+    "opening_sentence": {"min_words": 150, "max_words": 200},
+    "associative_word": {"min_words": 150, "max_words": 200},
+}
+WORD_COUNT_PENALTY_PERCENT = 5  # 5% penalty per field violation
 
 
 # ══════════════════════════════════════════════════════════════
@@ -365,3 +369,53 @@ def _count_words(text: str) -> int:
     if not text:
         return 0
     return len(text.split())
+
+
+def apply_score_feedback_penalties(output: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Check soft constraints on score_feedback and apply penalties.
+
+    Modifies private_score by deducting 5% for each word count violation.
+    Returns the modified output dict.
+    """
+    if "feedback" not in output or not isinstance(output["feedback"], dict):
+        return output
+
+    feedback = output["feedback"]
+    violations = []
+
+    for field, limits in SCORE_FEEDBACK_WORD_LIMITS.items():
+        if field not in feedback:
+            continue
+
+        text = feedback[field]
+        if not isinstance(text, str):
+            continue
+
+        word_count = _count_words(text)
+        min_words = limits.get("min_words", 0)
+        max_words = limits.get("max_words", float("inf"))
+
+        if word_count < min_words:
+            violations.append(f"{field}: {word_count} words < {min_words} min")
+        elif word_count > max_words:
+            violations.append(f"{field}: {word_count} words > {max_words} max")
+
+    if violations:
+        import logging
+        logger = logging.getLogger("q21_referee.validator")
+
+        # Apply penalty: 5% per violation
+        penalty_percent = WORD_COUNT_PENALTY_PERCENT * len(violations)
+        original_score = output.get("private_score", 0)
+        penalty_amount = original_score * (penalty_percent / 100)
+        new_score = max(0, original_score - penalty_amount)
+
+        logger.warning(
+            f"Word count violations in feedback: {violations}. "
+            f"Applying {penalty_percent}% penalty: {original_score} -> {new_score}"
+        )
+
+        output["private_score"] = new_score
+
+    return output
