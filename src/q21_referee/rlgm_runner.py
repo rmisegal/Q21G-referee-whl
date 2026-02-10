@@ -46,12 +46,10 @@ class RLGMRunner:
         # Validate config
         validate_config(config)
 
-        # Build email client
+        # Build email client (OAuth-based)
         self.email_client = EmailClient(
-            address=config["referee_email"],
-            password=config["referee_password"],
-            imap_server=config.get("imap_server", "imap.gmail.com"),
-            smtp_server=config.get("smtp_server", "smtp.gmail.com"),
+            credentials_path=config.get("credentials_path", ""),
+            token_path=config.get("token_path", ""),
         )
 
         # Build RLGM orchestrator
@@ -84,7 +82,7 @@ class RLGMRunner:
         """Log startup information."""
         logger.info("=" * 60)
         logger.info("  Q21 RLGM Runner — Starting")
-        logger.info(f"  Email: {self.config['referee_email']}")
+        logger.info(f"  Email: {self.email_client.address or 'connecting...'}")
         logger.info(f"  Group: {self.config.get('group_id', 'N/A')}")
         logger.info(f"  Poll:  every {self.poll_interval}s")
         logger.info("=" * 60)

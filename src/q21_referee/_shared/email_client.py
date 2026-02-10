@@ -1,179 +1,235 @@
 # Area: Shared
 # PRD: docs/prd-rlgm.md
 """
-q21_referee._shared.email_client — IMAP/SMTP email wrapper
-==========================================================
+q21_referee._shared.email_client — Gmail API wrapper with OAuth
+================================================================
 
-Handles all email I/O. The runner calls poll() to get new messages
-and send() to deliver outgoing messages. Students never use this directly.
+Handles all email I/O using Gmail API with OAuth2 authentication.
+The runner calls poll() to get new messages and send() to deliver outgoing.
+Students never use this directly.
+
+Setup:
+    1. Create OAuth credentials at https://console.cloud.google.com/
+    2. Download as credentials.json
+    3. Set GMAIL_CREDENTIALS_PATH and GMAIL_TOKEN_PATH in .env
+    4. On first run, browser opens for OAuth consent
 """
 
 from __future__ import annotations
-import imaplib
-import smtplib
-import email
+import base64
 import json
-import time
 import logging
+import os
 from email.mime.text import MIMEText
+from pathlib import Path
 from typing import List, Optional, Dict, Any
+
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
 
 logger = logging.getLogger("q21_referee.email")
 
+# Gmail API scopes
+GMAIL_SCOPES = [
+    "https://www.googleapis.com/auth/gmail.modify",
+    "https://www.googleapis.com/auth/gmail.send",
+]
+
 
 class EmailClient:
-    """
-    Wraps IMAP (receive) and SMTP (send) for protocol messages.
-    """
+    """Gmail API client with OAuth2 authentication."""
 
-    def __init__(self, address: str, password: str,
-                 imap_server: str = "imap.gmail.com",
-                 smtp_server: str = "smtp.gmail.com",
-                 imap_port: int = 993,
-                 smtp_port: int = 587):
+    def __init__(
+        self,
+        credentials_path: str = "",
+        token_path: str = "",
+        address: str = "",
+        **kwargs,  # Accept legacy params for backwards compat
+    ):
+        """Initialize Gmail client.
+
+        Args:
+            credentials_path: Path to OAuth credentials.json
+            token_path: Path to store/load token.json
+            address: Gmail address (for logging, auto-detected from API)
+        """
+        self.credentials_path = credentials_path or os.environ.get(
+            "GMAIL_CREDENTIALS_PATH", "credentials.json"
+        )
+        self.token_path = token_path or os.environ.get(
+            "GMAIL_TOKEN_PATH", "token.json"
+        )
         self.address = address
-        self.password = password
-        self.imap_server = imap_server
-        self.smtp_server = smtp_server
-        self.imap_port = imap_port
-        self.smtp_port = smtp_port
-        self._imap: Optional[imaplib.IMAP4_SSL] = None
+        self._service = None
+        self._credentials: Optional[Credentials] = None
 
-    # ── Connection management ─────────────────────────────────
+    def connect_imap(self) -> None:
+        """Establish connection to Gmail API (named for backwards compat)."""
+        self._connect()
 
-    def connect_imap(self):
-        """Establish IMAP connection."""
+    def _connect(self) -> bool:
+        """Establish connection to Gmail API."""
         try:
-            self._imap = imaplib.IMAP4_SSL(self.imap_server, self.imap_port)
-            self._imap.login(self.address, self.password)
-            self._imap.select("INBOX")
-            logger.info(f"IMAP connected: {self.address}")
+            self._credentials = self._get_credentials()
+            self._service = build("gmail", "v1", credentials=self._credentials)
+
+            # Get user's email address
+            profile = self._service.users().getProfile(userId="me").execute()
+            self.address = profile.get("emailAddress", self.address)
+
+            logger.info(f"Gmail API connected: {self.address}")
+            return True
         except Exception as e:
-            logger.error(f"IMAP connection failed: {e}")
+            logger.error(f"Gmail connection failed: {e}")
             raise
 
-    def disconnect_imap(self):
-        """Close IMAP connection."""
-        if self._imap:
+    def _get_credentials(self) -> Credentials:
+        """Get or refresh OAuth2 credentials."""
+        creds_path = Path(self.credentials_path)
+        token_path = Path(self.token_path)
+
+        if not creds_path.exists():
+            raise FileNotFoundError(
+                f"Gmail credentials not found at {creds_path}. "
+                "Download from Google Cloud Console."
+            )
+
+        creds = None
+
+        # Load existing token
+        if token_path.exists():
             try:
-                self._imap.logout()
+                creds = Credentials.from_authorized_user_file(
+                    str(token_path), GMAIL_SCOPES
+                )
             except Exception:
                 pass
-            self._imap = None
 
-    # ── Polling ───────────────────────────────────────────────
+        # Refresh or get new credentials
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            else:
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    str(creds_path), GMAIL_SCOPES
+                )
+                creds = flow.run_local_server(port=0)
 
-    def poll(self, since_uid: int = 0,
-             subject_filter: str = None) -> List[Dict[str, Any]]:
-        """
-        Poll inbox for new protocol messages.
+            # Save credentials
+            token_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(token_path, "w") as token:
+                token.write(creds.to_json())
 
-        Returns list of dicts:
-            [{"uid": int, "subject": str, "from": str,
-              "body_json": dict | None, "raw_body": str}]
-        """
-        if not self._imap:
-            self.connect_imap()
+        return creds
+
+    def disconnect_imap(self) -> None:
+        """Close connection (named for backwards compat)."""
+        self._service = None
+        self._credentials = None
+
+    def poll(self, **kwargs) -> List[Dict[str, Any]]:
+        """Poll inbox for new unread messages."""
+        if not self._service:
+            self._connect()
 
         messages = []
         try:
-            # Search for unseen messages (or all since UID)
-            search_criteria = "(UNSEEN)"
-            if subject_filter:
-                search_criteria = f'(UNSEEN SUBJECT "{subject_filter}")'
+            # Get unread messages
+            results = self._service.users().messages().list(
+                userId="me", q="is:unread", maxResults=50
+            ).execute()
 
-            status, data = self._imap.search(None, search_criteria)
-            if status != "OK" or not data[0]:
-                return []
+            msg_refs = results.get("messages", [])
 
-            msg_nums = data[0].split()
-            for num in msg_nums:
+            for ref in msg_refs:
                 try:
-                    status, msg_data = self._imap.fetch(num, "(RFC822)")
-                    if status != "OK":
-                        continue
+                    msg = self._service.users().messages().get(
+                        userId="me", id=ref["id"], format="full"
+                    ).execute()
 
-                    raw = msg_data[0][1]
-                    msg = email.message_from_bytes(raw)
+                    parsed = self._parse_message(msg)
+                    if parsed:
+                        messages.append(parsed)
 
-                    subject = msg.get("Subject", "")
-                    from_addr = msg.get("From", "")
-
-                    # Extract body
-                    body = ""
-                    if msg.is_multipart():
-                        for part in msg.walk():
-                            if part.get_content_type() == "text/plain":
-                                body = part.get_payload(decode=True).decode(
-                                    "utf-8", errors="replace")
-                                break
-                    else:
-                        body = msg.get_payload(decode=True).decode(
-                            "utf-8", errors="replace")
-
-                    # Try to parse body as JSON
-                    body_json = None
-                    try:
-                        body_json = json.loads(body.strip())
-                    except (json.JSONDecodeError, ValueError):
-                        pass
-
-                    messages.append({
-                        "uid": int(num),
-                        "subject": subject,
-                        "from": from_addr,
-                        "body_json": body_json,
-                        "raw_body": body,
-                    })
-
-                    # Mark as seen
-                    self._imap.store(num, "+FLAGS", "\\Seen")
+                    # Mark as read
+                    self._service.users().messages().modify(
+                        userId="me",
+                        id=ref["id"],
+                        body={"removeLabelIds": ["UNREAD"]},
+                    ).execute()
 
                 except Exception as e:
-                    logger.warning(f"Failed to process message {num}: {e}")
-                    continue
+                    logger.warning(f"Failed to process message {ref['id']}: {e}")
 
-        except imaplib.IMAP4.abort:
-            logger.warning("IMAP connection lost, reconnecting...")
-            self.connect_imap()
         except Exception as e:
             logger.error(f"Poll error: {e}")
 
         return messages
 
-    # ── Sending ───────────────────────────────────────────────
+    def _parse_message(self, msg: dict) -> Optional[Dict[str, Any]]:
+        """Parse Gmail API message into standard format."""
+        headers = {h["name"]: h["value"] for h in msg["payload"].get("headers", [])}
 
-    def send(self, to_email: str, subject: str,
-             body_dict: dict) -> bool:
-        """
-        Send a protocol message as email.
+        subject = headers.get("Subject", "")
+        from_addr = headers.get("From", "")
 
-        Parameters
-        ----------
-        to_email : str      Recipient email address
-        subject  : str      Protocol-formatted subject line
-        body_dict : dict    The full envelope (will be JSON-serialized)
+        # Extract body
+        body = self._get_body(msg["payload"])
 
-        Returns
-        -------
-        bool    True if sent successfully
-        """
+        # Try to parse as JSON
+        body_json = None
+        if body:
+            try:
+                body_json = json.loads(body.strip())
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        return {
+            "uid": msg["id"],
+            "subject": subject,
+            "from": from_addr,
+            "body_json": body_json,
+            "raw_body": body,
+        }
+
+    def _get_body(self, payload: dict) -> str:
+        """Extract text body from message payload."""
+        if payload.get("body", {}).get("data"):
+            return base64.urlsafe_b64decode(payload["body"]["data"]).decode("utf-8")
+
+        parts = payload.get("parts", [])
+        for part in parts:
+            if part.get("mimeType") == "text/plain":
+                data = part.get("body", {}).get("data", "")
+                if data:
+                    return base64.urlsafe_b64decode(data).decode("utf-8")
+            elif part.get("parts"):
+                result = self._get_body(part)
+                if result:
+                    return result
+        return ""
+
+    def send(self, to_email: str, subject: str, body_dict: dict) -> bool:
+        """Send a protocol message as email."""
+        if not self._service:
+            self._connect()
+
         try:
             body_json = json.dumps(body_dict, indent=2)
 
             msg = MIMEText(body_json, "plain", "utf-8")
-            msg["From"] = self.address
             msg["To"] = to_email
             msg["Subject"] = subject
 
-            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
-                server.ehlo()
-                server.starttls()
-                server.ehlo()
-                server.login(self.address, self.password)
-                server.send_message(msg)
+            raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+            self._service.users().messages().send(
+                userId="me", body={"raw": raw}
+            ).execute()
 
-            logger.info(f"Sent [{subject.split('::')[-1] if '::' in subject else subject}] → {to_email}")
+            short_subj = subject.split("::")[-1] if "::" in subject else subject
+            logger.info(f"Sent [{short_subj}] → {to_email}")
             return True
 
         except Exception as e:

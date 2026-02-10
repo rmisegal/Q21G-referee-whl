@@ -34,16 +34,6 @@ def prompt(question: str, default: str = "", required: bool = True) -> str:
         print("  This field is required. Please enter a value.")
 
 
-def prompt_password(question: str) -> str:
-    """Prompt for password (no default shown)."""
-    import getpass
-    while True:
-        value = getpass.getpass(f"{question}: ").strip()
-        if value:
-            return value
-        print("  This field is required. Please enter a value.")
-
-
 def print_header():
     """Print welcome header."""
     print()
@@ -67,13 +57,20 @@ def get_config_values() -> dict:
     """Interactively collect configuration values."""
     config = {}
 
-    print_section("Gmail Credentials")
-    print("You need a Gmail account with an App Password.")
-    print("Create one at: https://myaccount.google.com/apppasswords")
+    print_section("OAuth Credentials")
+    print("You need OAuth credentials from Google Cloud Console.")
+    print("1. Go to https://console.cloud.google.com/")
+    print("2. Create a project and enable Gmail API")
+    print("3. Create OAuth 2.0 credentials (Desktop app)")
+    print("4. Download the credentials JSON file")
     print()
 
-    config["referee_email"] = prompt("Gmail address for your referee")
-    config["referee_password"] = prompt_password("Gmail App Password")
+    config["credentials_path"] = prompt(
+        "Path to credentials.json", default="credentials.json"
+    )
+    config["token_path"] = prompt(
+        "Path to store token.json", default="token.json"
+    )
 
     print_section("Referee Identity")
     config["referee_id"] = prompt("Referee ID", default="REF001")
@@ -105,8 +102,8 @@ def write_config_json(config: dict, path: Path) -> None:
 def write_env_file(config: dict, path: Path) -> None:
     """Write .env file."""
     env_mapping = {
-        "referee_email": "GMAIL_ACCOUNT",
-        "referee_password": "GMAIL_APP_PASSWORD",
+        "credentials_path": "GMAIL_CREDENTIALS_PATH",
+        "token_path": "GMAIL_TOKEN_PATH",
         "referee_id": "REFEREE_ID",
         "group_id": "GROUP_ID",
         "display_name": "DISPLAY_NAME",
@@ -147,10 +144,15 @@ def main():
     print()
     print("Next steps:")
     print()
-    print("  1. Run in demo mode to test your setup:")
+    print("  1. Make sure credentials.json is in place")
+    print()
+    print("  2. Run in demo mode to test your setup:")
     print("     python -m q21_referee --demo --config config.json")
     print()
-    print("  2. Once working, implement your own RefereeAI class")
+    print("  3. On first run, a browser will open for OAuth consent")
+    print("     (token.json will be created automatically)")
+    print()
+    print("  4. Once working, implement your own RefereeAI class")
     print()
     return 0
 

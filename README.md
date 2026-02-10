@@ -14,7 +14,23 @@ cd q21-referee-sdk
 pip install -e .
 ```
 
-### Step 2: Configure Credentials
+### Step 2: Set Up OAuth Credentials
+
+You need OAuth credentials from Google Cloud Console (no App Password needed):
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project (or select existing)
+3. Enable the **Gmail API**:
+   - Go to "APIs & Services" → "Library"
+   - Search for "Gmail API" and enable it
+4. Create OAuth credentials:
+   - Go to "APIs & Services" → "Credentials"
+   - Click "Create Credentials" → "OAuth client ID"
+   - Select "Desktop app"
+   - Download the JSON file as `credentials.json`
+5. Place `credentials.json` in your project folder
+
+### Step 3: Configure Settings
 
 Run the setup script to generate `config.json` and `.env` files:
 
@@ -23,11 +39,9 @@ python setup_config.py
 ```
 
 The script will prompt you for:
-- Gmail address and App Password
+- Path to credentials.json (default: `credentials.json`)
 - Referee ID and Group ID
 - League Manager email
-
-> **Note:** You need a [Gmail App Password](https://support.google.com/accounts/answer/185833), not your regular password.
 
 <details>
 <summary>Manual configuration (alternative)</summary>
@@ -36,8 +50,8 @@ Create `config.json` manually:
 
 ```json
 {
-    "referee_email": "your.referee@gmail.com",
-    "referee_password": "your-app-password",
+    "credentials_path": "credentials.json",
+    "token_path": "token.json",
     "referee_id": "REF001",
     "group_id": "GROUP_01",
     "league_manager_email": "league.manager@example.com"
@@ -46,7 +60,7 @@ Create `config.json` manually:
 
 </details>
 
-### Step 3: Run in Demo Mode
+### Step 4: Run in Demo Mode
 
 Test your setup immediately with the `--demo` argument (no code required):
 
@@ -54,12 +68,16 @@ Test your setup immediately with the `--demo` argument (no code required):
 python -m q21_referee --demo --config config.json
 ```
 
+On first run, a browser will open for OAuth consent. After you approve:
+- `token.json` is created automatically
+- Future runs won't need browser authorization
+
 This runs the referee using `DemoAI`, which provides pre-written responses from `demo_data/`. Use demo mode to:
 - Verify your setup works before writing any code
 - Understand the game flow
 - Test email connectivity
 
-### Step 4: Implement Your AI
+### Step 5: Implement Your AI
 
 Once demo mode works, implement your own referee logic (see [Custom Implementation](#custom-implementation) below).
 
@@ -144,8 +162,8 @@ class MyRefereeAI(RefereeAI):
 
 if __name__ == "__main__":
     config = {
-        "referee_email": "your.referee@gmail.com",
-        "referee_password": "your-app-password",
+        "credentials_path": "credentials.json",
+        "token_path": "token.json",
         "referee_id": "REF001",
         "group_id": "GROUP_01",
         "display_name": "My Referee Bot",
@@ -184,8 +202,8 @@ Use `RefereeRunner` for testing a single game without League Manager:
 from q21_referee import RefereeRunner
 
 config = {
-    "referee_email": "your.referee@gmail.com",
-    "referee_password": "your-app-password",
+    "credentials_path": "credentials.json",
+    "token_path": "token.json",
     "referee_id": "REF001",
     "game_id": "0101001",
     "match_id": "TEST_MATCH",
@@ -200,12 +218,17 @@ runner.run()
 
 ## Configuration
 
+### OAuth Settings
+
+| Key | Required | Description |
+|-----|----------|-------------|
+| `credentials_path` | No | Path to OAuth credentials.json (default: `credentials.json` or `GMAIL_CREDENTIALS_PATH` env var) |
+| `token_path` | No | Path to store token.json (default: `token.json` or `GMAIL_TOKEN_PATH` env var) |
+
 ### Season Mode (RLGMRunner)
 
 | Key | Required | Description |
 |-----|----------|-------------|
-| `referee_email` | Yes | Your referee Gmail address |
-| `referee_password` | Yes | Gmail app password |
 | `referee_id` | Yes | Your assigned referee ID (e.g., "REF001") |
 | `group_id` | Yes | Your group ID from league registration |
 | `display_name` | No | Display name (default: "Q21 Referee") |
@@ -216,8 +239,6 @@ runner.run()
 
 | Key | Required | Description |
 |-----|----------|-------------|
-| `referee_email` | Yes | Your referee Gmail address |
-| `referee_password` | Yes | Gmail app password |
 | `referee_id` | Yes | Your assigned referee ID |
 | `game_id` | Yes | Game ID (e.g., "0101001") |
 | `match_id` | Yes | Match ID |
@@ -306,11 +327,11 @@ def get_score_feedback(self, ctx):
 
 ## Environment Setup
 
-Create a `.env` file:
+Create a `.env` file (or use `python setup_config.py`):
 
 ```bash
-GMAIL_ACCOUNT=your.referee@gmail.com
-GMAIL_APP_PASSWORD=your-app-password
+GMAIL_CREDENTIALS_PATH=credentials.json
+GMAIL_TOKEN_PATH=token.json
 REFEREE_ID=REF001
 GROUP_ID=GROUP_01
 LEAGUE_MANAGER_EMAIL=league.manager@example.com

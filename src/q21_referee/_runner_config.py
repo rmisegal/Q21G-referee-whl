@@ -29,14 +29,10 @@ INCOMING_MESSAGE_TYPES = {
     "LEAGUE_COMPLETED",
 }
 
-# Required config keys
+# Required config keys (OAuth credentials loaded from env vars if not in config)
 REQUIRED_CONFIG_KEYS = [
-    "referee_email",
-    "referee_password",
     "referee_id",
     "league_manager_email",
-    "league_id",
-    "season_id",
 ]
 
 
