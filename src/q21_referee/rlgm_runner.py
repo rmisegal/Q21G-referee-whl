@@ -123,12 +123,8 @@ class RLGMRunner:
 
             try:
                 outgoing = self._route_message(message_type, body, sender)
-                # Update protocol logger with game context if game is active
-                if self.orchestrator.current_game:
-                    gprm = self.orchestrator.current_game.gprm
-                    if gprm and gprm.game_id:
-                        self._protocol_logger.set_game_id(gprm.game_id)
-                        self._protocol_logger.set_role_active(True)
+                # Update protocol logger with game context
+                self._update_protocol_logger_context(message_type, body)
                 self._send_messages(outgoing)
             except Exception as e:
                 logger.error(f"Router error: {e}", exc_info=True)
@@ -164,6 +160,32 @@ class RLGMRunner:
             outgoing = self.orchestrator.route_player_message(message_type, body, sender)
 
         return outgoing
+
+    def _update_protocol_logger_context(
+        self, message_type: str, body: dict
+    ) -> None:
+        """Update protocol logger with current game context."""
+        # If we have an active game, use its context
+        if self.orchestrator.current_game:
+            gprm = self.orchestrator.current_game.gprm
+            if gprm and gprm.game_id:
+                self._protocol_logger.set_game_id(gprm.game_id)
+                self._protocol_logger.set_role_active(True)
+                return
+
+        # For new round broadcasts, update context even if not assigned
+        if message_type == "BROADCAST_NEW_LEAGUE_ROUND":
+            payload = body.get("payload", {})
+            round_number = payload.get("round_number", 0)
+            # Build placeholder game_id: SS RR 000 (no specific game)
+            # Format: 2-digit season + 2-digit round + 000
+            season_id = self.config.get("season_id", "01")
+            # Extract last 2 digits if season_id is longer
+            season_suffix = str(season_id)[-2:] if len(str(season_id)) >= 2 else f"{season_id:02}"
+            game_id = f"{season_suffix}{round_number:02d}000"
+            self._protocol_logger.set_game_id(game_id)
+            # No active game means referee is inactive for this round
+            self._protocol_logger.set_role_active(False)
 
     def _send_messages(self, outgoing: List[Tuple[dict, str, str]]) -> None:
         """Send outgoing messages."""
