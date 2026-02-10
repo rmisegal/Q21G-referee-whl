@@ -80,8 +80,8 @@ def load_config(config_path: Optional[str]) -> Dict[str, Any]:
 
     # Override with environment variables
     env_mappings = {
-        "GMAIL_ACCOUNT": "referee_email",
-        "GMAIL_APP_PASSWORD": "referee_password",
+        "GMAIL_CREDENTIALS_PATH": "credentials_path",
+        "GMAIL_TOKEN_PATH": "token_path",
         "REFEREE_ID": "referee_id",
         "GROUP_ID": "group_id",
         "LEAGUE_MANAGER_EMAIL": "league_manager_email",
@@ -129,11 +129,11 @@ def main() -> int:
     config = load_config(args.config)
 
     # Validate required config
-    required = ["referee_email", "referee_password"]
+    required = ["referee_id", "league_manager_email"]
     missing = [k for k in required if k not in config]
     if missing:
         print(f"Error: Missing required config: {', '.join(missing)}", file=sys.stderr)
-        print("Set via config file or environment variables.", file=sys.stderr)
+        print("Run 'python setup_config.py' to generate config.", file=sys.stderr)
         return 1
 
     ai = get_ai(args, config)
