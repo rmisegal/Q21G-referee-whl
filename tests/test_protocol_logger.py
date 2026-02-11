@@ -118,19 +118,31 @@ class TestProtocolLogger:
         logger.set_role_active(False)
         assert logger._get_role() == "REFEREE-INACTIVE"
 
-    def test_get_role_empty_for_no_game(self):
-        """Test that role is empty when game_id ends with 999 (no assignment)."""
+    def test_get_role_empty_for_unknown_round(self):
+        """Test that role is empty when round is 99 (unknown round)."""
         logger = ProtocolLogger()
-        logger.set_game_id("0101999")
+        logger.set_game_id("0199999")
         assert logger._get_role() == ""
 
-    def test_is_no_game(self):
-        """Test _is_no_game helper for 999 suffix detection."""
+    def test_get_role_shown_for_known_round_no_game(self):
+        """Test that role is shown when round is known even without game (999)."""
         logger = ProtocolLogger()
-        assert logger._is_no_game("0101999") is True
-        assert logger._is_no_game("0102999") is True
-        assert logger._is_no_game("0101001") is False
-        assert logger._is_no_game("0000000") is False
+        logger.set_game_id("0102999")  # Round 02, no game
+        logger.set_role_active(True)
+        assert logger._get_role() == "REFEREE-ACTIVE"
+        logger.set_role_active(False)
+        assert logger._get_role() == "REFEREE-INACTIVE"
+
+    def test_is_unknown_round(self):
+        """Test _is_unknown_round helper for 99 round detection."""
+        logger = ProtocolLogger()
+        # Unknown round (99) -> True
+        assert logger._is_unknown_round("0199999") is True
+        assert logger._is_unknown_round("0199001") is True  # Even with game, round unknown
+        # Known round -> False
+        assert logger._is_unknown_round("0101999") is False
+        assert logger._is_unknown_round("0102001") is False
+        assert logger._is_unknown_round("0100000") is False  # Round 00 is still known
 
     def test_log_received_output(self, capsys):
         """Test log_received prints formatted output."""

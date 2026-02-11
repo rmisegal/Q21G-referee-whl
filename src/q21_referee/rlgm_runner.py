@@ -171,11 +171,26 @@ class RLGMRunner:
 
         return outgoing
 
+    # Season-level message types (use 0199999, empty role)
+    SEASON_LEVEL_MESSAGES = {
+        "BROADCAST_START_SEASON",
+        "SEASON_REGISTRATION_RESPONSE",
+        "BROADCAST_ASSIGNMENT_TABLE",
+        "LEAGUE_COMPLETED",
+        "MATCH_RESULT_REPORT",
+    }
+
     def _update_protocol_logger_context(
         self, message_type: str, body: dict
     ) -> None:
-        """Update protocol logger context BEFORE routing (for RECEIVED log)."""
-        # If we have an active game, use its context
+        """Update protocol logger context BEFORE routing (for RECEIVED log).
+
+        Game ID format: SSRRGGG (SS=season always "01", RR=round, GGG=game)
+        - Season-level messages: 0199999 (RR=99 → empty role)
+        - Round-level (START-ROUND): 01RR999 (ACTIVE/INACTIVE based on assignment)
+        - Game-level (active game): 01RRGGG (ACTIVE)
+        """
+        # If we have an active game, use its context (game-level)
         if self.orchestrator.current_game:
             gprm = self.orchestrator.current_game.gprm
             if gprm and gprm.game_id:
@@ -183,9 +198,15 @@ class RLGMRunner:
                 self._protocol_logger.set_role_active(True)
                 return
 
-        # For new round broadcasts, check assignments to determine context
+        # Season-level messages: 0199999, role will be empty (RR=99)
+        if message_type in self.SEASON_LEVEL_MESSAGES:
+            self._protocol_logger.set_game_id("0199999")
+            self._protocol_logger.set_role_active(False)
+            return
+
+        # Round-level: BROADCAST_NEW_LEAGUE_ROUND
         if message_type == "BROADCAST_NEW_LEAGUE_ROUND":
-            payload = body.get("payload", {})
+            payload = body.get("payload") or {}
             round_number = payload.get("round_number")
             if not isinstance(round_number, int):
                 logger.warning(f"Invalid round_number in payload: {round_number}, defaulting to 0")
@@ -201,26 +222,15 @@ class RLGMRunner:
                     self._protocol_logger.set_role_active(True)
                     return
 
-            # Not assigned - build placeholder game_id with 999 (no game)
-            season_id = self.config.get("season_id", "01")
-            season_suffix = str(season_id)[-2:] if len(str(season_id)) >= 2 else f"{season_id:02}"
-            game_id = f"{season_suffix}{round_number:02d}999"
+            # Not assigned - build placeholder game_id: 01RR999 (no game)
+            game_id = f"01{round_number:02d}999"
             self._protocol_logger.set_game_id(game_id)
-            # Role will be empty due to 999 suffix
+            self._protocol_logger.set_role_active(False)
             return
 
-        # For assignment table, try to extract game_id from first assignment
-        if message_type == "BROADCAST_ASSIGNMENT_TABLE":
-            payload = body.get("payload", {})
-            assignments = payload.get("assignments", [])
-            if assignments and len(assignments) > 0:
-                first_assignment = assignments[0]
-                game_id = first_assignment.get("game_id", "")
-                if game_id:
-                    self._protocol_logger.set_game_id(game_id)
-                    # Still inactive until round actually starts
-                    self._protocol_logger.set_role_active(False)
-                    return
+        # Default fallback for unknown message types
+        self._protocol_logger.set_game_id("0199999")
+        self._protocol_logger.set_role_active(False)
 
     def _find_assignment_for_round(self, round_number: int) -> dict:
         """Find assignment for the given round number."""

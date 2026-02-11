@@ -108,14 +108,16 @@ class ProtocolLogger:
         """Set whether referee is active for current round."""
         self.role_active = active
 
-    def _is_no_game(self, game_id: str) -> bool:
-        """Check if game_id indicates no game assignment (ends with 999)."""
-        return game_id and game_id.endswith("999")
+    def _is_unknown_round(self, game_id: str) -> bool:
+        """Check if game_id indicates unknown round (RR=99 in positions 2-3)."""
+        if not game_id or len(game_id) < 4:
+            return True
+        return game_id[2:4] == "99"
 
     def _get_role(self, game_id: str = None) -> str:
-        """Get role string. Empty if no game assignment (999)."""
+        """Get role string. Empty if unknown round (99), else ACTIVE/INACTIVE."""
         gid = game_id or self._current_game_id
-        if self._is_no_game(gid):
+        if self._is_unknown_round(gid):
             return ""
         return "REFEREE-ACTIVE" if self.role_active else "REFEREE-INACTIVE"
 

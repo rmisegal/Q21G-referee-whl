@@ -85,3 +85,130 @@ class TestRLGMRunner:
             "p1@test.com",
         )
         assert outgoing == []
+
+
+class TestProtocolLoggerContext:
+    """Tests for protocol logger context updates in RLGMRunner."""
+
+    def create_config(self, season_id="01"):
+        """Create sample config."""
+        return {
+            "referee_id": "REF001",
+            "referee_email": "ref@test.com",
+            "referee_password": "password",
+            "group_id": "GROUP_A",
+            "league_id": "LEAGUE001",
+            "season_id": season_id,
+            "league_manager_email": "lm@test.com",
+        }
+
+    @patch("q21_referee.rlgm_runner.EmailClient")
+    def test_season_level_message_uses_0199999(self, mock_email):
+        """Test that season-level messages set game_id to 0199999."""
+        config = self.create_config()
+        ai = MockRefereeAI()
+        runner = RLGMRunner(config=config, ai=ai)
+
+        # BROADCAST_START_SEASON is season-level
+        body = {"message_type": "BROADCAST_START_SEASON", "payload": {}}
+        runner._update_protocol_logger_context("BROADCAST_START_SEASON", body)
+
+        assert runner._protocol_logger._current_game_id == "0199999"
+
+    @patch("q21_referee.rlgm_runner.EmailClient")
+    def test_season_registration_response_uses_0199999(self, mock_email):
+        """Test that SEASON_REGISTRATION_RESPONSE sets game_id to 0199999."""
+        config = self.create_config()
+        ai = MockRefereeAI()
+        runner = RLGMRunner(config=config, ai=ai)
+
+        body = {"message_type": "SEASON_REGISTRATION_RESPONSE", "payload": {}}
+        runner._update_protocol_logger_context("SEASON_REGISTRATION_RESPONSE", body)
+
+        assert runner._protocol_logger._current_game_id == "0199999"
+
+    @patch("q21_referee.rlgm_runner.EmailClient")
+    def test_assignment_table_uses_0199999(self, mock_email):
+        """Test that BROADCAST_ASSIGNMENT_TABLE sets game_id to 0199999."""
+        config = self.create_config()
+        ai = MockRefereeAI()
+        runner = RLGMRunner(config=config, ai=ai)
+
+        body = {
+            "message_type": "BROADCAST_ASSIGNMENT_TABLE",
+            "payload": {"assignments": []},
+        }
+        runner._update_protocol_logger_context("BROADCAST_ASSIGNMENT_TABLE", body)
+
+        assert runner._protocol_logger._current_game_id == "0199999"
+
+    @patch("q21_referee.rlgm_runner.EmailClient")
+    def test_new_round_without_assignment_uses_round_format(self, mock_email):
+        """Test BROADCAST_NEW_LEAGUE_ROUND with no assignment uses 01RR999."""
+        config = self.create_config()
+        ai = MockRefereeAI()
+        runner = RLGMRunner(config=config, ai=ai)
+
+        body = {
+            "message_type": "BROADCAST_NEW_LEAGUE_ROUND",
+            "payload": {"round_number": 3},
+        }
+        runner._update_protocol_logger_context("BROADCAST_NEW_LEAGUE_ROUND", body)
+
+        # Format: 01 (season) + 03 (round) + 999 (no game)
+        assert runner._protocol_logger._current_game_id == "0103999"
+        # Not assigned, so inactive
+        assert runner._protocol_logger.role_active is False
+
+    @patch("q21_referee.rlgm_runner.EmailClient")
+    def test_new_round_with_assignment_uses_game_id(self, mock_email):
+        """Test BROADCAST_NEW_LEAGUE_ROUND with assignment uses assigned game_id."""
+        config = self.create_config()
+        ai = MockRefereeAI()
+        runner = RLGMRunner(config=config, ai=ai)
+
+        # Setup: add an assignment for round 2 via orchestrator's _assignments
+        runner.orchestrator._assignments = [
+            {"round_number": 2, "game_id": "0102001", "player1_email": "p1@test.com"}
+        ]
+
+        body = {
+            "message_type": "BROADCAST_NEW_LEAGUE_ROUND",
+            "payload": {"round_number": 2},
+        }
+        runner._update_protocol_logger_context("BROADCAST_NEW_LEAGUE_ROUND", body)
+
+        assert runner._protocol_logger._current_game_id == "0102001"
+        assert runner._protocol_logger.role_active is True
+
+    @patch("q21_referee.rlgm_runner.EmailClient")
+    def test_active_game_uses_gprm_game_id(self, mock_email):
+        """Test that when a game is active, its GPRM game_id is used."""
+        config = self.create_config()
+        ai = MockRefereeAI()
+        runner = RLGMRunner(config=config, ai=ai)
+
+        # Setup: create a mock game with GPRM
+        mock_game = Mock()
+        mock_gprm = Mock()
+        mock_gprm.game_id = "0105003"
+        mock_game.gprm = mock_gprm
+        runner.orchestrator.current_game = mock_game
+
+        body = {"message_type": "Q21WARMUPRESPONSE", "payload": {}}
+        runner._update_protocol_logger_context("Q21WARMUPRESPONSE", body)
+
+        assert runner._protocol_logger._current_game_id == "0105003"
+        assert runner._protocol_logger.role_active is True
+
+    @patch("q21_referee.rlgm_runner.EmailClient")
+    def test_league_completed_uses_0199999(self, mock_email):
+        """Test that LEAGUE_COMPLETED sets game_id to 0199999."""
+        config = self.create_config()
+        ai = MockRefereeAI()
+        runner = RLGMRunner(config=config, ai=ai)
+
+        body = {"message_type": "LEAGUE_COMPLETED", "payload": {}}
+        runner._update_protocol_logger_context("LEAGUE_COMPLETED", body)
+
+        assert runner._protocol_logger._current_game_id == "0199999"
