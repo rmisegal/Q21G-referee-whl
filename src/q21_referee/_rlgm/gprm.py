@@ -12,13 +12,14 @@ GMC to execute a single match.
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(frozen=True)
 class GPRM:
     """
     Game Parameters passed from RLGM to GMC.
 
-    This dataclass contains all the information GMC needs to execute
-    a single game between two players.
+    This is a frozen (immutable) dataclass containing all the information
+    GMC needs to execute a single game between two players. Once created,
+    the game_id and other fields cannot be modified.
 
     Attributes:
         player1_email: Email address of player 1

@@ -14,7 +14,7 @@ Q21 Referee SDK — A Python SDK for implementing Q21 League referee AI. Student
 |------|-----------|-------------|
 | **RLGM** | Referee League Game Manager | Season orchestration layer. Handles League Manager communication, assignment tracking, and multi-game coordination. |
 | **GMC** | Game Management Cycle | Single-game execution layer. Manages one game's lifecycle from warmup to scoring. |
-| **GPRM** | Game Parameters | Immutable data passed from RLGM to GMC when starting a game. Contains player info, game_id, round info. |
+| **GPRM** | Game Parameters | Frozen (immutable) dataclass passed from RLGM to GMC when starting a game. Contains player info, game_id, round info. Cannot be modified after creation. |
 | **LM** | League Manager | External system that broadcasts season events and receives match results. |
 | **game_id** | Game Identifier | 7-digit format `SSRRGGG` — SS=season, RR=round, GGG=game number. Created by League Manager. |
 

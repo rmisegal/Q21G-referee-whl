@@ -63,3 +63,38 @@ class TestGPRM:
             round_number=1,
         )
         assert gprm1 == gprm2
+
+    def test_gprm_is_immutable(self):
+        """Test that GPRM fields cannot be modified after creation."""
+        gprm = GPRM(
+            player1_email="player1@test.com",
+            player1_id="P001",
+            player2_email="player2@test.com",
+            player2_id="P002",
+            season_id="SEASON_2026_Q1",
+            game_id="0101001",
+            match_id="R1M1",
+            round_id="ROUND_1",
+            round_number=1,
+        )
+        with pytest.raises(AttributeError):
+            gprm.game_id = "9999999"
+
+    def test_gprm_is_hashable(self):
+        """Test that frozen GPRM can be used as dict key or in sets."""
+        gprm = GPRM(
+            player1_email="player1@test.com",
+            player1_id="P001",
+            player2_email="player2@test.com",
+            player2_id="P002",
+            season_id="S1",
+            game_id="0101001",
+            match_id="M1",
+            round_id="R1",
+            round_number=1,
+        )
+        # Should be hashable (can be added to set or used as dict key)
+        game_set = {gprm}
+        assert gprm in game_set
+        game_dict = {gprm: "test_game"}
+        assert game_dict[gprm] == "test_game"
