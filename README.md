@@ -356,4 +356,6 @@ This SDK implements the UNIFIED_PROTOCOL.md specification:
 
 ## License
 
-MIT License
+**Proprietary** - Copyright (c) 2026 Dr. Yoram Segal and Omry Tzabar. All rights reserved.
+
+This project is proprietary software. No code modifications are permitted, and usage is restricted exclusively to students of Dr. Yoram Segal's courses unless prior written permission is granted. See [LICENSE](LICENSE) for full terms.

@@ -4,9 +4,11 @@ version = "2.0.0"
 description = "Q21 Referee SDK - Implement AI callbacks for the Q21 League game"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "MIT"}
+license = "LicenseRef-Proprietary"
+license-files = ["LICENSE"]
 authors = [
-    {name = "Course Staff"}
+    {name = "Dr. Yoram Segal"},
+    {name = "Omry Tzabar"},
 ]
 keywords = ["q21", "referee", "game", "ai", "sdk"]
 classifiers = [

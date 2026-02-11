@@ -2,6 +2,12 @@
 q21_referee — Q21 League Referee Package
 =========================================
 
+Copyright (c) 2026 Dr. Yoram Segal and Omry Tzabar. All rights reserved.
+
+PROPRIETARY SOFTWARE — No modifications, redistribution, or derivative works
+permitted. Usage restricted to courses delivered by Dr. Yoram Segal unless
+prior written approval is granted. See LICENSE file for full terms.
+
 Quick Start (no implementation needed):
     from q21_referee import DemoAI, RLGMRunner
     runner = RLGMRunner(config=config, ai=DemoAI())
@@ -92,3 +98,5 @@ __all__ = [
     "ScoreFeedbackResponse",
 ]
 __version__ = "2.0.0"
+__license__ = "Proprietary — Copyright (c) 2026 Dr. Yoram Segal and Omry Tzabar"
+__author__ = "Dr. Yoram Segal and Omry Tzabar"

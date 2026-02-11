@@ -76,7 +76,7 @@ setup(
     version="1.0.0",
     description="Q21 Referee SDK - Implement AI callbacks for the Q21 League game",
     author="Course Staff",
-    license="MIT",
+    license="Proprietary",
     python_requires=">=3.10",
     packages=find_packages(where="src") + ["sdk", "sdk.llm_sdk", "sdk.protocol_sdk"],
     package_dir={"": "src", "sdk": "sdk", "sdk.llm_sdk": "sdk/llm_sdk", "sdk.protocol_sdk": "sdk/protocol_sdk"},
