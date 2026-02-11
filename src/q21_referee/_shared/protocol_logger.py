@@ -108,7 +108,15 @@ class ProtocolLogger:
         """Set whether referee is active for current round."""
         self.role_active = active
 
-    def _get_role(self) -> str:
+    def _is_no_game(self, game_id: str) -> bool:
+        """Check if game_id indicates no game assignment (ends with 999)."""
+        return game_id and game_id.endswith("999")
+
+    def _get_role(self, game_id: str = None) -> str:
+        """Get role string. Empty if no game assignment (999)."""
+        gid = game_id or self._current_game_id
+        if self._is_no_game(gid):
+            return ""
         return "REFEREE-ACTIVE" if self.role_active else "REFEREE-INACTIVE"
 
     def _now(self) -> str:
@@ -136,10 +144,12 @@ class ProtocolLogger:
         expected = EXPECTED_RESPONSES.get(message_type, "Unknown")
         deadline = self._deadline(deadline_seconds)
 
+        role = self._get_role(gid)
+        role_part = f"ROLE: {role}" if role else "ROLE:"
         line = (
             f"{GREEN}{self._now()} | GAME-ID: {gid:7} | RECEIVED | "
             f"from {email:30} | {display:20} | EXPECTED-RESPONSE: {expected:25} | "
-            f"ROLE: {self._get_role()} | DEADLINE: {deadline}{RESET}"
+            f"{role_part:24} | DEADLINE: {deadline}{RESET}"
         )
         print(line, file=sys.stdout)
 
@@ -156,10 +166,12 @@ class ProtocolLogger:
         expected = EXPECTED_RESPONSES.get(message_type, "Unknown")
         deadline = self._deadline(deadline_seconds or DEFAULT_DEADLINES.get(message_type, 0))
 
+        role = self._get_role(gid)
+        role_part = f"ROLE: {role}" if role else "ROLE:"
         line = (
             f"{GREEN}{self._now()} | GAME-ID: {gid:7} | SENT     | "
             f"to   {email:30} | {display:20} | EXPECTED-RESPONSE: {expected:25} | "
-            f"ROLE: {self._get_role()} | DEADLINE: {deadline}{RESET}"
+            f"{role_part:24} | DEADLINE: {deadline}{RESET}"
         )
         print(line, file=sys.stdout)
 

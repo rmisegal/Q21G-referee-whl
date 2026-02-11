@@ -118,6 +118,20 @@ class TestProtocolLogger:
         logger.set_role_active(False)
         assert logger._get_role() == "REFEREE-INACTIVE"
 
+    def test_get_role_empty_for_no_game(self):
+        """Test that role is empty when game_id ends with 999 (no assignment)."""
+        logger = ProtocolLogger()
+        logger.set_game_id("0101999")
+        assert logger._get_role() == ""
+
+    def test_is_no_game(self):
+        """Test _is_no_game helper for 999 suffix detection."""
+        logger = ProtocolLogger()
+        assert logger._is_no_game("0101999") is True
+        assert logger._is_no_game("0102999") is True
+        assert logger._is_no_game("0101001") is False
+        assert logger._is_no_game("0000000") is False
+
     def test_log_received_output(self, capsys):
         """Test log_received prints formatted output."""
         logger = ProtocolLogger()

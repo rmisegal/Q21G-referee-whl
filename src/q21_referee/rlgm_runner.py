@@ -200,12 +200,12 @@ class RLGMRunner:
                     self._protocol_logger.set_role_active(True)
                     return
 
-            # Not assigned - build placeholder game_id
+            # Not assigned - build placeholder game_id with 999 (no game)
             season_id = self.config.get("season_id", "01")
             season_suffix = str(season_id)[-2:] if len(str(season_id)) >= 2 else f"{season_id:02}"
-            game_id = f"{season_suffix}{round_number:02d}000"
+            game_id = f"{season_suffix}{round_number:02d}999"
             self._protocol_logger.set_game_id(game_id)
-            self._protocol_logger.set_role_active(False)
+            # Role will be empty due to 999 suffix
             return
 
         # For assignment table, try to extract game_id from first assignment
