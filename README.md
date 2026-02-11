@@ -9,8 +9,8 @@ A Python SDK for implementing Q21 League referee AI. Students implement 4 callba
 ### Step 1: Clone and Install
 
 ```bash
-git clone https://github.com/OmryTzabbar1/q21-referee-sdk.git
-cd q21-referee-sdk
+git clone https://github.com/rmisegal/Q21G-referee-whl.git
+cd Q21G-referee-whl
 pip install -e .
 ```
 
