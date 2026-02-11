@@ -112,8 +112,9 @@ class RLGMRunner:
                 logger.debug(f"Skipped (no JSON): {subject} from {from_addr}")
                 continue
 
-            message_type = body.get("message_type", "")
-            sender = body.get("sender", {}).get("email", from_addr)
+            message_type = body.get("message_type") or ""
+            sender_dict = body.get("sender") or {}
+            sender = sender_dict.get("email") or from_addr or "unknown"
 
             if message_type not in INCOMING_MESSAGE_TYPES:
                 logger.debug(f"Skipped (unknown type '{message_type}'): {subject}")

@@ -330,8 +330,8 @@ class EmailClient:
 
             # Log protocol SENT message
             protocol_logger = get_protocol_logger()
-            message_type = body_dict.get("message_type", "")
-            game_id = body_dict.get("payload", {}).get("game_id", "")
+            message_type = body_dict.get("message_type") or ""
+            game_id = (body_dict.get("payload") or {}).get("game_id") or ""
             if not game_id:
                 game_id = body_dict.get("game_id", "")
             protocol_logger.log_sent(

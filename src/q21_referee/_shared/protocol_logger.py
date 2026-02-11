@@ -139,7 +139,10 @@ class ProtocolLogger:
         game_id: Optional[str] = None,
     ) -> None:
         """Log a received protocol message."""
-        gid = game_id or self._current_game_id
+        # Ensure no None values reach format strings
+        gid = game_id or self._current_game_id or "0000000"
+        email = email or "unknown"
+        message_type = message_type or "UNKNOWN"
         display = RECEIVE_DISPLAY_NAMES.get(message_type, message_type)
         expected = EXPECTED_RESPONSES.get(message_type, "Unknown")
         deadline = self._deadline(deadline_seconds)
@@ -161,7 +164,10 @@ class ProtocolLogger:
         game_id: Optional[str] = None,
     ) -> None:
         """Log a sent protocol message."""
-        gid = game_id or self._current_game_id
+        # Ensure no None values reach format strings
+        gid = game_id or self._current_game_id or "0000000"
+        email = email or "unknown"
+        message_type = message_type or "UNKNOWN"
         display = SEND_DISPLAY_NAMES.get(message_type, message_type)
         expected = EXPECTED_RESPONSES.get(message_type, "Unknown")
         deadline = self._deadline(deadline_seconds or DEFAULT_DEADLINES.get(message_type, 0))
@@ -177,6 +183,7 @@ class ProtocolLogger:
 
     def log_callback_call(self, callback_name: str) -> None:
         """Log a callback invocation."""
+        callback_name = callback_name or "unknown"
         display = CALLBACK_DISPLAY_NAMES.get(callback_name, callback_name)
         line = (
             f"{ORANGE}{self._now_ms()} | CALLBACK: {display:20} | "
@@ -186,6 +193,7 @@ class ProtocolLogger:
 
     def log_callback_response(self, callback_name: str) -> None:
         """Log a callback response."""
+        callback_name = callback_name or "unknown"
         display = CALLBACK_DISPLAY_NAMES.get(callback_name, callback_name)
         line = (
             f"{ORANGE}{self._now_ms()} | CALLBACK: {display:20} | "
