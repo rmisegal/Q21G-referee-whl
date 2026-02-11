@@ -166,3 +166,45 @@ class TestBroadcastAssignmentTableHandler:
         # Should return None for non-existent round
         r3 = handler.get_assignment_for_round(3)
         assert r3 is None
+
+    def test_handles_invalid_game_id_format(self):
+        """Test handling when game_id is too short to parse round_number."""
+        handler, _ = self.create_handler_in_waiting_state()
+        message = {
+            "message_type": "BROADCAST_ASSIGNMENT_TABLE",
+            "broadcast_id": "BC002",
+            "payload": {
+                "assignments": [
+                    {"role": "player1", "email": "p1@test.com", "game_id": "XY", "group_id": "G002"},
+                    {"role": "player2", "email": "p2@test.com", "game_id": "XY", "group_id": "G003"},
+                    {"role": "referee", "email": "referee@test.com", "game_id": "XY", "group_id": "G001"},
+                ],
+            },
+        }
+
+        handler.handle(message)
+
+        # Should default round_number to 0 for invalid game_id
+        assert len(handler.assignments) == 1
+        assert handler.assignments[0]["round_number"] == 0
+
+    def test_handles_non_numeric_game_id(self):
+        """Test handling when game_id has non-numeric round portion."""
+        handler, _ = self.create_handler_in_waiting_state()
+        message = {
+            "message_type": "BROADCAST_ASSIGNMENT_TABLE",
+            "broadcast_id": "BC002",
+            "payload": {
+                "assignments": [
+                    {"role": "player1", "email": "p1@test.com", "game_id": "XXAB001", "group_id": "G002"},
+                    {"role": "player2", "email": "p2@test.com", "game_id": "XXAB001", "group_id": "G003"},
+                    {"role": "referee", "email": "referee@test.com", "game_id": "XXAB001", "group_id": "G001"},
+                ],
+            },
+        }
+
+        handler.handle(message)
+
+        # Should default round_number to 0 for non-numeric round
+        assert len(handler.assignments) == 1
+        assert handler.assignments[0]["round_number"] == 0

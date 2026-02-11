@@ -185,7 +185,10 @@ class RLGMRunner:
         # For new round broadcasts, check assignments to determine context
         if message_type == "BROADCAST_NEW_LEAGUE_ROUND":
             payload = body.get("payload", {})
-            round_number = payload.get("round_number", 0)
+            round_number = payload.get("round_number")
+            if not isinstance(round_number, int):
+                logger.warning(f"Invalid round_number in payload: {round_number}, defaulting to 0")
+                round_number = 0
 
             # Check if we have an assignment for this round
             assignment = self._find_assignment_for_round(round_number)

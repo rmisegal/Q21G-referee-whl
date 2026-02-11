@@ -64,8 +64,11 @@ class BroadcastNewRoundHandler(BaseBroadcastHandler):
 
         self.log_handling("BROADCAST_NEW_LEAGUE_ROUND", broadcast_id)
 
-        round_number = payload.get("round_number", 0)
-        round_id = payload.get("round_id", "")
+        round_number = payload.get("round_number")
+        if not isinstance(round_number, int):
+            logger.warning(f"Invalid round_number in payload: {round_number}, defaulting to 0")
+            round_number = 0
+        round_id = payload.get("round_id") or ""
 
         logger.info(f"New round starting: {round_id} (round {round_number})")
 

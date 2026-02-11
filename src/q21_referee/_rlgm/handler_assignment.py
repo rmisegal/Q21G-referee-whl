@@ -124,7 +124,11 @@ class BroadcastAssignmentTableHandler(BaseBroadcastHandler):
                 continue
             if game_id not in games:
                 # Parse round from game_id (format SSRRGGG)
-                round_num = int(game_id[2:4]) if len(game_id) >= 4 else 0
+                try:
+                    round_num = int(game_id[2:4]) if game_id and len(game_id) >= 4 else 0
+                except (ValueError, TypeError):
+                    logger.warning(f"Could not parse round_number from game_id: {game_id}")
+                    round_num = 0
                 games[game_id] = {"game_id": game_id, "round_number": round_num}
             role = a.get("role")
             if role == "player1":

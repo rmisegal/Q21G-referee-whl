@@ -117,3 +117,37 @@ class TestBroadcastNewRoundHandler:
         # Should return None and not transition
         assert result is None
         assert state_machine.current_state == RLGMState.RUNNING
+
+    def test_handles_none_round_number(self):
+        """Test handling when round_number is None in payload."""
+        handler, state_machine = self.create_handler_in_running_state()
+        message = {
+            "message_type": "BROADCAST_NEW_LEAGUE_ROUND",
+            "broadcast_id": "BC003",
+            "payload": {
+                "round_number": None,  # Explicitly None
+                "round_id": "ROUND_1",
+            },
+        }
+
+        result = handler.handle(message)
+
+        # Should default to round 0 and not find assignment
+        assert result is None
+
+    def test_handles_missing_round_number(self):
+        """Test handling when round_number is missing from payload."""
+        handler, state_machine = self.create_handler_in_running_state()
+        message = {
+            "message_type": "BROADCAST_NEW_LEAGUE_ROUND",
+            "broadcast_id": "BC003",
+            "payload": {
+                "round_id": "ROUND_1",
+                # round_number missing
+            },
+        }
+
+        result = handler.handle(message)
+
+        # Should default to round 0 and not find assignment
+        assert result is None
