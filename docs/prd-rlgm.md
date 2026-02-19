@@ -35,7 +35,7 @@ The current GMC implementation:
 | BROADCAST_START_SEASON | No handler | Yes |
 | SEASON_REGISTRATION_RESPONSE | No handler | Yes |
 | BROADCAST_ASSIGNMENT_TABLE | No handler | Yes |
-| BROADCAST_NEW_LEAGUE_ROUND | Has handler | Yes |
+| BROADCAST_NEW_LEAGUE_ROUND | Orchestrator only (removed from GMC) | Yes |
 | BROADCAST_END_LEAGUE_ROUND | No handler | Yes |
 | BROADCAST_END_SEASON | No handler | Yes |
 | LEAGUE_COMPLETED | No handler | Yes |
@@ -136,6 +136,15 @@ class GPRM:
 
 ```python
 @dataclass
+class PlayerScore:
+    """Individual player's score and statistics from a game."""
+    player_id: str
+    player_email: str
+    score: int
+    questions_answered: int
+    correct_answers: int
+
+@dataclass
 class GameResult:
     """Result returned from GMC to RLGM after game completion."""
 
@@ -150,15 +159,6 @@ class GameResult:
     status: str = "completed"              # "completed" | "aborted"
     abort_reason: Optional[str] = None     # "new_round_started" | "end_round_received"
     player_states: Optional[dict] = None   # per-player phase snapshot with last_actor
-
-@dataclass
-class PlayerScore:
-    participant_id: str
-    email: str
-    league_points: int      # 0-3
-    private_score: float    # 0-100
-    breakdown: ScoreBreakdown
-    feedback: PlayerFeedback
 ```
 
 ---
@@ -350,103 +350,83 @@ CREATE TABLE broadcasts_received (
 
 ## 10. Interface Between RLGM and GMC
 
-### RLGM calls GMC:
+### Orchestrator Round Lifecycle
+
+The orchestrator owns round lifecycle with three operations:
 
 ```python
-# In RLGM
 class RLGMOrchestrator:
-    def start_game(self, gprm: GPRM, ai: RefereeAI) -> GameResult:
+    def start_round(self, gprm: GPRM) -> List[Tuple[dict, str, str]]:
+        """Start a new round: create GMC, send warmup calls.
+
+        1. Skip if same round already active (idempotent)
+        2. Abort current game if different round active
+        3. Create new GMC with GPRM
+        4. Call warmup_initiator to build Q21WARMUPCALL envelopes
         """
-        Start a single game managed by GMC.
 
-        RLGM passes:
-          - GPRM (game parameters)
-          - RefereeAI (student's callback implementation)
+    def abort_current_game(self, reason: str) -> List[Tuple[dict, str, str]]:
+        """Force-complete current game with abort status.
 
-        GMC returns:
-          - GameResult (winner, scores, feedback)
+        1. Snapshot per-player state via get_state_snapshot()
+        2. Score players who submitted guesses (via abort_handler)
+        3. Build MATCH_RESULT_REPORT with status="aborted"
+        4. Transition state machine GAME_ABORTED → RUNNING
         """
-        # Build GMC config from GPRM
-        config = {
-            "player1_email": gprm.player1_email,
-            "player1_id": gprm.player1_id,
-            "player2_email": gprm.player2_email,
-            "player2_id": gprm.player2_id,
-            "season_id": gprm.season_id,
-            "game_id": gprm.game_id,
-            "match_id": gprm.match_id,
-            # ... other config from self.config
-        }
 
-        # Create GMC instance and run game
-        gmc = GameManagementCycle(config=config, ai=ai)
-        result = gmc.run_single_game()
+    def complete_game(self) -> None:
+        """Handle natural game completion.
 
-        return result
+        Called when GMC reports is_complete() after routing a player message.
+        Transitions state machine GAME_COMPLETE → RUNNING.
+        """
 ```
 
-### GMC returns GameResult:
+### GMC as Pure Game Engine
+
+GMC only routes player messages — it does not initiate rounds or send warmup calls:
 
 ```python
-# In GMC (_message_router.py)
-def _build_match_result(self) -> GameResult:
-    """
-    Build GameResult to return to RLGM.
+class GameManagementCycle:
+    def __init__(self, gprm: GPRM, ai: RefereeAI, config: dict): ...
 
-    NOTE: GMC does NOT send MATCH_RESULT_REPORT.
-    RLGM handles ALL League Manager communication.
-    """
+    def route_message(self, message_type, body, sender_email) -> List[Tuple]:
+        """Route player messages: Q21WARMUPRESPONSE, Q21QUESTIONSBATCH, Q21GUESSSUBMISSION."""
+
+    def is_complete(self) -> bool:
+        """True when game reaches MATCH_REPORTED phase."""
+
+    def get_result(self) -> Optional[GameResult]:
+        """Build GameResult from current state."""
+
+    def get_state_snapshot(self) -> dict:
+        """Per-player state snapshot for abort reporting.
+        Returns: {game_id, phase, player1: {...}, player2: {...}}
+        """
+```
+
+### GMC builds GameResult:
+
+```python
+# In GMC (gmc.py)
+def _build_game_result(self) -> GameResult:
     p1, p2 = self.state.player1, self.state.player2
 
-    winner_id = self._determine_winner(p1, p2)
-
     return GameResult(
-        game_id=self.state.game_id,
-        match_id=self.state.match_id,
-        status="completed",
+        game_id=self.gprm.game_id,
+        match_id=self.gprm.match_id,
+        round_id=self.gprm.round_id,
+        season_id=self.gprm.season_id,
+        player1=PlayerScore(
+            player_id=p1.participant_id,
+            player_email=p1.email,
+            score=p1.league_points,
+            questions_answered=len(p1.questions) if p1.questions else 0,
+            correct_answers=0,
+        ),
+        player2=PlayerScore(...),
         winner_id=winner_id,
-        is_draw=(winner_id is None),
-        scores=[
-            PlayerScore(
-                participant_id=p1.participant_id,
-                email=p1.email,
-                league_points=p1.league_points,
-                private_score=p1.private_score,
-                breakdown=p1.breakdown,
-                feedback=p1.feedback,
-            ),
-            PlayerScore(
-                participant_id=p2.participant_id,
-                email=p2.email,
-                league_points=p2.league_points,
-                private_score=p2.private_score,
-                breakdown=p2.breakdown,
-                feedback=p2.feedback,
-            ),
-        ],
-    )
-```
-
-### RLGM sends MATCH_RESULT_REPORT:
-
-```python
-# In RLGM (orchestrator.py)
-def _send_match_result(self, result: GameResult) -> None:
-    """
-    RLGM sends MATCH_RESULT_REPORT to League Manager.
-    All LM communication is centralized in RLGM.
-    """
-    envelope = self.response_builder.build_match_result(
-        game_id=result.game_id,
-        match_id=result.match_id,
-        winner_id=result.winner_id,
-        is_draw=result.is_draw,
-        scores=result.scores,
-    )
-    self.email_client.send(
-        to=self.config["league_manager_email"],
-        subject=envelope["subject"],
-        body=envelope["body"],
+        is_draw=is_draw,
     )
 ```
 
@@ -494,41 +474,29 @@ runner.run()  # RLGM handles everything else!
 
 ## 12. Hidden Implementation (RLGM Integration)
 
-Inside `RefereeRunner.run()`:
+Inside `RLGMRunner` (`rlgm_runner.py`):
 
 ```python
-def run(self):
-    """
-    Main event loop (hidden from students).
+class RLGMRunner:
+    def __init__(self, config, ai):
+        self.email_client = EmailClient(...)
+        self.orchestrator = RLGMOrchestrator(config=config, ai=ai)
 
-    Internally uses RLGM for season management
-    and GMC for individual game execution.
-    """
-    # Initialize RLGM
-    self.rlgm = RLGMOrchestrator(
-        config=self.config,
-        ai=self.ai,
-        email_client=self.email_client,
-        db=self.database,
-    )
+    def _route_message(self, message_type, body, sender):
+        outgoing = []
 
-    # Main loop
-    while self._running:
-        messages = self.email_client.poll()
+        if is_lm_message(message_type):
+            result = self.orchestrator.handle_lm_message(body)
+            if result:
+                outgoing.append((result, subject, lm_email))
+            # Collect pending messages (warmup calls, abort reports)
+            outgoing.extend(self.orchestrator.get_pending_outgoing())
 
-        for msg in messages:
-            message_type = msg.get("message_type")
+        elif is_player_message(message_type):
+            outgoing = self.orchestrator.route_player_message(
+                message_type, body, sender)
 
-            # RLGM handles League Manager messages
-            if self._is_league_manager_message(message_type):
-                self.rlgm.handle_message(msg)
-
-            # GMC handles player messages (via current game instance)
-            elif self._is_player_message(message_type):
-                if self.rlgm.current_game:
-                    self.rlgm.current_game.handle_message(msg)
-
-        time.sleep(self.poll_interval)
+        return outgoing
 ```
 
 ---
@@ -569,42 +537,66 @@ def run(self):
 ```
 q21-referee-sdk/
 ├── src/q21_referee/
-│   ├── __init__.py              # Public API (unchanged)
-│   ├── callbacks.py             # RefereeAI base class (unchanged)
-│   ├── runner.py                # RefereeRunner (updated to use RLGM)
-│   ├── types.py                 # TypedDict schemas (unchanged)
-│   ├── errors.py                # Exceptions (unchanged)
+│   ├── __init__.py              # Public API exports
+│   ├── callbacks.py             # RefereeAI abstract class (student implements)
+│   ├── runner.py                # RefereeRunner (single-game mode)
+│   ├── rlgm_runner.py           # RLGMRunner (season mode, default)
+│   ├── types.py                 # TypedDict definitions for callbacks
+│   ├── errors.py                # Custom exception classes
+│   ├── cli.py                   # Command-line interface
+│   ├── demo_ai.py               # Pre-built DemoAI implementation
+│   ├── _runner_config.py        # Configuration validation
 │   │
-│   ├── _gmc/                    # GMC (renamed from root)
-│   │   ├── __init__.py
-│   │   ├── message_router.py    # Current _message_router.py
-│   │   ├── state.py             # Current _state.py
-│   │   ├── envelope_builder.py  # Current _envelope_builder.py
-│   │   ├── context_builder.py   # Current _context_builder.py
-│   │   ├── callback_executor.py # Current _callback_executor.py
-│   │   └── validator.py         # Current _validator.py
+│   ├── _gmc/                    # GMC Layer (pure game engine)
+│   │   ├── gmc.py               # GameManagementCycle wrapper
+│   │   ├── state.py             # GameState, GamePhase, PlayerState
+│   │   ├── router.py            # Player message router (no broadcast routes)
+│   │   ├── envelope_builder.py  # Protocol message construction
+│   │   ├── context_builder.py   # Callback context building
+│   │   ├── callback_executor.py # Callback execution with timeouts
+│   │   ├── validator.py         # Protocol validation
+│   │   ├── snapshot.py          # Per-player state snapshot (abort reporting)
+│   │   └── handlers/
+│   │       ├── warmup.py        # handle_warmup_response only
+│   │       ├── questions.py
+│   │       └── scoring.py
 │   │
-│   ├── _rlgm/                   # NEW: RLGM components
-│   │   ├── __init__.py
-│   │   ├── orchestrator.py      # Main RLGM logic
-│   │   ├── state_machine.py     # Season state machine
-│   │   ├── broadcast_router.py  # Route LM messages
-│   │   ├── handlers_season.py   # Season handlers
-│   │   ├── handlers_lifecycle.py# Round handlers
-│   │   ├── handlers_assignment.py# Assignment handler
+│   ├── _rlgm/                   # RLGM Layer (season orchestration)
+│   │   ├── orchestrator.py      # Round lifecycle: start_round, abort, complete
+│   │   ├── state_machine.py     # RLGM state machine
+│   │   ├── enums.py             # RLGMState, RLGMEvent (incl. GAME_ABORTED)
+│   │   ├── gprm.py              # GPRM frozen dataclass
+│   │   ├── game_result.py       # GameResult + PlayerScore dataclasses
+│   │   ├── broadcast_router.py  # Route LM messages to handlers
 │   │   ├── response_builder.py  # Build LM responses
-│   │   ├── models.py            # GPRM, GameResult, enums
-│   │   └── database.py          # DB repositories
+│   │   ├── warmup_initiator.py  # Build warmup calls for new rounds
+│   │   ├── abort_handler.py     # Abort scoring, winner determination
+│   │   ├── handler_base.py      # Base handler class
+│   │   ├── handler_start_season.py
+│   │   ├── handler_registration_response.py
+│   │   ├── handler_assignment.py
+│   │   ├── handler_new_round.py # Builds GPRM from assignments
+│   │   ├── handler_end_round.py # Signals abort for active round
+│   │   ├── handler_end_season.py
+│   │   ├── handler_keep_alive.py
+│   │   ├── handler_critical_pause.py
+│   │   ├── handler_critical_reset.py
+│   │   ├── handler_round_results.py
+│   │   ├── database.py          # SQLite persistence
+│   │   ├── repo_assignments.py
+│   │   ├── repo_broadcasts.py
+│   │   └── repo_seasons.py
 │   │
 │   └── _shared/                 # Shared utilities
-│       ├── email_client.py      # Current _email_client.py
-│       └── logging_config.py    # Current _logging_config.py
+│       ├── email_client.py      # Gmail OAuth client
+│       ├── logging_config.py    # Colored logging setup
+│       ├── protocol.py          # Protocol constants, envelope building
+│       └── protocol_logger.py   # Structured protocol message logging
 │
 ├── docs/
-│   ├── prd-rlgm.md              # This PRD
-│   └── comparison-gmailasreferee-vs-rlgm-gmc.md
+│   └── prd-rlgm.md              # This PRD
 │
-└── examples/                    # (unchanged)
+└── examples/
 ```
 
 ---
