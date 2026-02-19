@@ -18,7 +18,6 @@ from ..callbacks import RefereeAI
 from .envelope_builder import EnvelopeBuilder
 from .context_builder import ContextBuilder
 from .handlers import (
-    handle_new_round,
     handle_warmup_response,
     handle_questions,
     handle_guess,
@@ -81,10 +80,7 @@ class MessageRouter:
             sender_email=sender_email,
         )
 
-        if message_type == "BROADCAST_NEW_LEAGUE_ROUND":
-            return handle_new_round(ctx)
-
-        elif message_type in ("Q21WARMUPRESPONSE", "Q21_WARMUP_RESPONSE"):
+        if message_type in ("Q21WARMUPRESPONSE", "Q21_WARMUP_RESPONSE"):
             return handle_warmup_response(ctx)
 
         elif message_type in ("Q21QUESTIONSBATCH", "Q21_QUESTIONS_BATCH"):

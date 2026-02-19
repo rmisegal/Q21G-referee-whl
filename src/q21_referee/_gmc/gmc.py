@@ -5,7 +5,6 @@ q21_referee._gmc.gmc — Game Management Cycle Wrapper
 ====================================================
 
 High-level wrapper that accepts GPRM from RLGM and returns GameResult.
-Encapsulates the internal router, state, and builder.
 """
 
 import logging
@@ -30,14 +29,7 @@ class GameManagementCycle:
     """
 
     def __init__(self, gprm: GPRM, ai: RefereeAI, config: Dict[str, Any]):
-        """
-        Initialize GMC from GPRM.
-
-        Args:
-            gprm: Game parameters from RLGM
-            ai: Student's RefereeAI implementation
-            config: Additional configuration (referee_email, etc.)
-        """
+        """Initialize GMC from GPRM."""
         self.gprm = gprm
         self.ai = ai
         self.config = config
@@ -75,38 +67,12 @@ class GameManagementCycle:
             config=config,
         )
 
-    def initiate_game(self) -> List[Tuple[dict, str, str]]:
-        """
-        Initiate the game by sending warmup calls to both players.
-
-        Called by RLGM orchestrator after creating the GMC.
-
-        Returns:
-            List of (envelope, subject, recipient) tuples for warmup calls
-        """
-        # Build a synthetic message body with round info from GPRM
-        body = {
-            "message_type": "BROADCAST_NEW_LEAGUE_ROUND",
-            "payload": {
-                "round_id": self.gprm.round_id,
-                "round_number": self.gprm.round_number,
-            },
-        }
-        return self.router.route("BROADCAST_NEW_LEAGUE_ROUND", body, "")
-
     def route_message(
         self, message_type: str, body: dict, sender_email: str
     ) -> List[Tuple[dict, str, str]]:
-        """
-        Route an incoming message through the game flow.
+        """Route an incoming message through the game flow.
 
-        Args:
-            message_type: Type of incoming message
-            body: Message body
-            sender_email: Sender's email
-
-        Returns:
-            List of (envelope, subject, recipient) tuples to send
+        Returns list of (envelope, subject, recipient) tuples to send.
         """
         outgoing = self.router.route(message_type, body, sender_email)
 
@@ -121,12 +87,7 @@ class GameManagementCycle:
         return self._result is not None
 
     def get_result(self) -> Optional[GameResult]:
-        """
-        Get the game result.
-
-        Returns:
-            GameResult if game is complete, None otherwise
-        """
+        """Get the game result, or None if not yet complete."""
         return self._result
 
     def get_state_snapshot(self) -> dict:
@@ -159,7 +120,7 @@ class GameManagementCycle:
                 player_email=p1.email,
                 score=p1.league_points,
                 questions_answered=len(p1.questions) if p1.questions else 0,
-                correct_answers=0,  # Would need tracking
+                correct_answers=0,
             ),
             player2=PlayerScore(
                 player_id=p2.participant_id,

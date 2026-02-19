@@ -85,23 +85,15 @@ class TestGameManagementCycle:
 
         assert gmc.is_complete() is False
 
-    def test_gmc_route_message(self):
-        """Test that route_message delegates to router."""
+    def test_gmc_route_unknown_message_returns_empty(self):
+        """Test that routing unknown message type returns empty list."""
         gprm = self.create_gprm()
         config = self.create_config()
         ai = MockRefereeAI()
-
         gmc = GameManagementCycle(gprm=gprm, ai=ai, config=config)
 
-        # Send new round message
-        message = {
-            "message_type": "BROADCAST_NEW_LEAGUE_ROUND",
-            "payload": {"round_id": "ROUND_1", "round_number": 1},
-        }
-        outgoing = gmc.route_message("BROADCAST_NEW_LEAGUE_ROUND", message, "lm@test.com")
-
-        # Should return warmup calls for both players
-        assert len(outgoing) == 2
+        outgoing = gmc.route_message("UNKNOWN_TYPE", {}, "someone@test.com")
+        assert outgoing == []
 
     def test_gmc_builds_game_result_on_complete(self):
         """Test that GMC builds GameResult when match completes."""

@@ -92,38 +92,24 @@ class TestRLGMOrchestrator:
         assert orchestrator.current_game is not None
         assert orchestrator.current_game.gprm == gprm
 
-    def test_route_player_message(self):
-        """Test routing player messages to current game."""
+    def test_route_player_message_no_handler(self):
+        """Test routing player message with no matching handler returns empty."""
         config = self.create_config()
         ai = MockRefereeAI()
         orchestrator = RLGMOrchestrator(config=config, ai=ai)
 
-        # Start a game first
         gprm = GPRM(
-            player1_email="p1@test.com",
-            player1_id="P001",
-            player2_email="p2@test.com",
-            player2_id="P002",
-            season_id="SEASON_2026_Q1",
-            game_id="0101001",
-            match_id="R1M1",
-            round_id="ROUND_1",
-            round_number=1,
+            player1_email="p1@test.com", player1_id="P001",
+            player2_email="p2@test.com", player2_id="P002",
+            season_id="SEASON_2026_Q1", game_id="0101001",
+            match_id="R1M1", round_id="ROUND_1", round_number=1,
         )
         orchestrator.start_game(gprm)
 
-        # Route a player message
-        message = {
-            "message_type": "BROADCAST_NEW_LEAGUE_ROUND",
-            "payload": {"round_id": "ROUND_1", "round_number": 1},
-        }
-
         outgoing = orchestrator.route_player_message(
-            "BROADCAST_NEW_LEAGUE_ROUND", message, "lm@test.com"
+            "UNKNOWN_TYPE", {}, "p1@test.com"
         )
-
-        # Should return warmup calls
-        assert len(outgoing) == 2
+        assert outgoing == []
 
     def test_no_game_returns_empty(self):
         """Test routing when no game is active returns empty."""
