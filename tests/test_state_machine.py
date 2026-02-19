@@ -41,6 +41,12 @@ class TestRLGMStateMachineBase:
         with pytest.raises(ValueError):
             sm.transition(RLGMEvent.ROUND_START)
 
+    def test_game_aborted_event_exists(self):
+        """Test that GAME_ABORTED event exists in RLGMEvent."""
+        from q21_referee._rlgm.enums import RLGMEvent
+        assert hasattr(RLGMEvent, "GAME_ABORTED")
+        assert RLGMEvent.GAME_ABORTED.value == "GAME_ABORTED"
+
 
 class TestRLGMStateMachineTransitions:
     """Tests for specific state transitions."""
