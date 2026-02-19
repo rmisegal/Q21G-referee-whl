@@ -41,5 +41,5 @@ class TestRLGMEvent:
         assert RLGMEvent.RESET.value == "RESET"
 
     def test_rlgm_event_count(self):
-        """Test that we have exactly 10 events."""
-        assert len(RLGMEvent) == 10
+        """Test that we have exactly 11 events."""
+        assert len(RLGMEvent) == 11
