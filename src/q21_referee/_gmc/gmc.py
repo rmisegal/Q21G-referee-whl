@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from .state import GameState, GamePhase, PlayerState
 from .envelope_builder import EnvelopeBuilder
 from .router import MessageRouter
+from .snapshot import build_state_snapshot
 from ..callbacks import RefereeAI
 from .._rlgm.gprm import GPRM
 from .._rlgm.game_result import GameResult, PlayerScore
@@ -127,6 +128,10 @@ class GameManagementCycle:
             GameResult if game is complete, None otherwise
         """
         return self._result
+
+    def get_state_snapshot(self) -> dict:
+        """Build serializable per-player state snapshot for abort reporting."""
+        return build_state_snapshot(self.gprm.game_id, self.state)
 
     def _build_game_result(self) -> GameResult:
         """Build GameResult from current state."""

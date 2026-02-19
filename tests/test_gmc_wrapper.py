@@ -127,3 +127,62 @@ class TestGameManagementCycle:
         assert result.is_draw is False
         assert result.player1.score == 15
         assert result.player2.score == 10
+
+    def test_get_state_snapshot_idle(self):
+        """Test snapshot at IDLE phase."""
+        gprm = self.create_gprm()
+        config = self.create_config()
+        ai = MockRefereeAI()
+        gmc = GameManagementCycle(gprm=gprm, ai=ai, config=config)
+
+        snapshot = gmc.get_state_snapshot()
+
+        assert snapshot["game_id"] == "0101001"
+        assert snapshot["phase"] == "idle"
+        assert snapshot["player1"]["email"] == "p1@test.com"
+        assert snapshot["player1"]["participant_id"] == "P001"
+        assert snapshot["player1"]["phase_reached"] == "idle"
+        assert snapshot["player1"]["scored"] is False
+        assert snapshot["player1"]["last_actor"] == "referee"
+        assert snapshot["player2"]["last_actor"] == "referee"
+
+    def test_get_state_snapshot_warmup_one_responded(self):
+        """Test snapshot when one player responded to warmup."""
+        gprm = self.create_gprm()
+        config = self.create_config()
+        ai = MockRefereeAI()
+        gmc = GameManagementCycle(gprm=gprm, ai=ai, config=config)
+
+        from q21_referee._gmc.state import GamePhase
+        gmc.state.phase = GamePhase.WARMUP_SENT
+        gmc.state.player1.warmup_answer = "4"
+
+        snapshot = gmc.get_state_snapshot()
+
+        assert snapshot["phase"] == "warmup_sent"
+        assert snapshot["player1"]["phase_reached"] == "warmup_answered"
+        assert snapshot["player1"]["last_actor"] == "P001"
+        assert snapshot["player2"]["phase_reached"] == "warmup_sent"
+        assert snapshot["player2"]["last_actor"] == "referee"
+
+    def test_get_state_snapshot_scored(self):
+        """Test snapshot when one player has been scored."""
+        gprm = self.create_gprm()
+        config = self.create_config()
+        ai = MockRefereeAI()
+        gmc = GameManagementCycle(gprm=gprm, ai=ai, config=config)
+
+        from q21_referee._gmc.state import GamePhase
+        gmc.state.phase = GamePhase.SCORING_COMPLETE
+        gmc.state.player1.score_sent = True
+        gmc.state.player1.league_points = 10
+        gmc.state.player1.guess = {"opening_sentence": "test"}
+        gmc.state.player2.guess = {"opening_sentence": "test2"}
+
+        snapshot = gmc.get_state_snapshot()
+
+        assert snapshot["player1"]["scored"] is True
+        assert snapshot["player1"]["phase_reached"] == "scored"
+        assert snapshot["player2"]["scored"] is False
+        assert snapshot["player2"]["phase_reached"] == "guess_submitted"
+        assert snapshot["player2"]["last_actor"] == "P002"
