@@ -92,3 +92,59 @@ class TestGameResult:
         assert result.winner_id is None
         assert result.is_draw is True
         assert result.player1.score == result.player2.score
+
+    def test_game_result_defaults_to_completed(self):
+        """Test that GameResult defaults to status='completed'."""
+        player1_score = PlayerScore(
+            player_id="P001", player_email="p1@test.com",
+            score=21, questions_answered=10, correct_answers=8,
+        )
+        player2_score = PlayerScore(
+            player_id="P002", player_email="p2@test.com",
+            score=15, questions_answered=10, correct_answers=6,
+        )
+        result = GameResult(
+            game_id="0101001", match_id="R1M1",
+            round_id="ROUND_1", season_id="S01",
+            player1=player1_score, player2=player2_score,
+            winner_id="P001", is_draw=False,
+        )
+        assert result.status == "completed"
+        assert result.abort_reason is None
+        assert result.player_states is None
+
+    def test_game_result_aborted(self):
+        """Test that GameResult can represent an aborted game."""
+        player1_score = PlayerScore(
+            player_id="P001", player_email="p1@test.com",
+            score=0, questions_answered=0, correct_answers=0,
+        )
+        player2_score = PlayerScore(
+            player_id="P002", player_email="p2@test.com",
+            score=0, questions_answered=0, correct_answers=0,
+        )
+        player_states = {
+            "player1": {
+                "phase_reached": "warmup_answered",
+                "scored": False,
+                "last_actor": "player1",
+            },
+            "player2": {
+                "phase_reached": "idle",
+                "scored": False,
+                "last_actor": "referee",
+            },
+        }
+        result = GameResult(
+            game_id="0101001", match_id="R1M1",
+            round_id="ROUND_1", season_id="S01",
+            player1=player1_score, player2=player2_score,
+            winner_id=None, is_draw=True,
+            status="aborted",
+            abort_reason="new_round_started",
+            player_states=player_states,
+        )
+        assert result.status == "aborted"
+        assert result.abort_reason == "new_round_started"
+        assert result.player_states["player1"]["last_actor"] == "player1"
+        assert result.player_states["player2"]["phase_reached"] == "idle"

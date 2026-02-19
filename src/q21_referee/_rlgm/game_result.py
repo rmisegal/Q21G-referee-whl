@@ -50,6 +50,9 @@ class GameResult:
         player2: Player 2's score and statistics
         winner_id: ID of the winning player, or None if draw
         is_draw: True if the game ended in a draw
+        status: Game completion status ('completed' or 'aborted')
+        abort_reason: Reason for abort, if status is 'aborted'
+        player_states: Per-player state snapshots at time of abort
     """
 
     game_id: str
@@ -60,3 +63,6 @@ class GameResult:
     player2: PlayerScore
     winner_id: Optional[str]
     is_draw: bool
+    status: str = "completed"
+    abort_reason: Optional[str] = None
+    player_states: Optional[dict] = None
