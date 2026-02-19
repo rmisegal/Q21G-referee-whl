@@ -241,3 +241,43 @@ class TestAbortCurrentGame:
         orchestrator.abort_current_game("new_round_started")
 
         assert orchestrator.state_machine.current_state == RLGMState.RUNNING
+
+
+class TestCompleteGame:
+    """Tests for orchestrator.complete_game()."""
+
+    def test_complete_game_clears_current_game(self):
+        """Test that complete_game sets current_game to None."""
+        orchestrator = RLGMOrchestrator(config=make_config(), ai=MockRefereeAI())
+        orchestrator.start_round(make_gprm(1))
+
+        # Simulate game completion
+        gmc = orchestrator.current_game
+        gmc.state.player1.league_points = 15
+        gmc.state.player2.league_points = 10
+        gmc.state.player1.score_sent = True
+        gmc.state.player2.score_sent = True
+        gmc.state.phase = GamePhase.MATCH_REPORTED
+
+        orchestrator.complete_game()
+
+        assert orchestrator.current_game is None
+
+    def test_complete_game_transitions_state(self):
+        """Test that complete_game fires GAME_COMPLETE event."""
+        orchestrator = RLGMOrchestrator(config=make_config(), ai=MockRefereeAI())
+        # Walk state machine to IN_GAME
+        orchestrator.state_machine.transition(RLGMEvent.SEASON_START)
+        orchestrator.state_machine.transition(RLGMEvent.REGISTRATION_ACCEPTED)
+        orchestrator.state_machine.transition(RLGMEvent.ASSIGNMENT_RECEIVED)
+        orchestrator.state_machine.transition(RLGMEvent.ROUND_START)
+
+        orchestrator.current_game = Mock()
+        orchestrator.current_game.get_result.return_value = Mock(
+            match_id="R1M1", winner_id="P001"
+        )
+
+        orchestrator.complete_game()
+
+        assert orchestrator.state_machine.current_state == RLGMState.RUNNING
+        assert orchestrator.current_game is None

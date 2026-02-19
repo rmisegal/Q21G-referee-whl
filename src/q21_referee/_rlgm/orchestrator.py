@@ -23,6 +23,7 @@ from ..callbacks import RefereeAI
 logger = logging.getLogger("q21_referee.rlgm.orchestrator")
 Msgs = List[Tuple[dict, str, str]]
 
+
 class RLGMOrchestrator:
     """Main orchestrator for RLGM season lifecycle."""
 
@@ -75,21 +76,19 @@ class RLGMOrchestrator:
         return msgs
 
     def start_game(self, gprm: GPRM) -> None:
-        """Start a new game with the given parameters."""
-        logger.info(f"Starting game: {gprm.match_id}")
+        """Start a new game (deprecated: use start_round instead)."""
+        logger.warning("start_game() is deprecated, use start_round()")
         self.current_game = GameManagementCycle(
             gprm=gprm, ai=self.ai, config=self.config)
 
     def start_round(self, gprm: GPRM) -> Msgs:
-        """Start a new round: create GMC, send warmup calls.
-        Idempotent — returns [] if the same round_number is active.
-        Aborts current game if one exists when a new round starts."""
+        """Start a new round: create GMC, send warmup calls."""
         if self.current_round_number == gprm.round_number:
             logger.info(f"Round {gprm.round_number} already active, skipping")
             return []
         outgoing: Msgs = []
         if self.current_game is not None:
-            logger.info(f"Aborting round {self.current_round_number} game "
+            logger.info(f"Aborting round {self.current_round_number} "
                         f"to start round {gprm.round_number}")
             outgoing.extend(self.abort_current_game("new_round_started"))
         self.current_round_number = gprm.round_number
@@ -134,15 +133,16 @@ class RLGMOrchestrator:
         outgoing = self.current_game.route_message(
             message_type, body, sender_email)
         if self.current_game.is_complete():
-            self._on_game_complete()
+            self.complete_game()
         return outgoing
 
-    def _on_game_complete(self) -> None:
+    def complete_game(self) -> None:
+        """Handle natural game completion."""
         if not self.current_game:
             return
         result = self.current_game.get_result()
         if result:
-            logger.info(f"Game complete: {result.match_id}")
+            logger.info(f"Game complete: {result.match_id}, winner: {result.winner_id}")
             self.state_machine.transition(RLGMEvent.GAME_COMPLETE, force=True)
         self.current_game = None
 
