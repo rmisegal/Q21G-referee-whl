@@ -281,3 +281,100 @@ class TestCompleteGame:
 
         assert orchestrator.state_machine.current_state == RLGMState.RUNNING
         assert orchestrator.current_game is None
+
+
+class TestRoundTransitionIntegration:
+    """Integration tests for round-to-round transitions."""
+
+    def test_new_round_aborts_current_and_starts_new(self):
+        """Test that starting round 2 properly aborts round 1 and starts round 2."""
+        orchestrator = RLGMOrchestrator(config=make_config(), ai=MockRefereeAI())
+
+        # Start round 1
+        outgoing1 = orchestrator.start_round(make_gprm(1))
+        assert len(outgoing1) == 2  # warmup calls
+        assert orchestrator.current_round_number == 1
+        round1_game = orchestrator.current_game
+
+        # Simulate some progress
+        orchestrator.current_game.state.player1.warmup_answer = "4"
+
+        # Start round 2 — should abort round 1 first
+        outgoing2 = orchestrator.start_round(make_gprm(2))
+
+        assert orchestrator.current_round_number == 2
+        assert orchestrator.current_game is not round1_game
+        # outgoing2 should contain: abort messages + new warmup calls
+        match_reports = [e for e, s, r in outgoing2 if e.get("message_type") == "MATCH_RESULT_REPORT"]
+        warmup_calls = [e for e, s, r in outgoing2 if e.get("message_type") == "Q21WARMUPCALL"]
+        assert len(match_reports) == 1
+        assert match_reports[0]["payload"]["status"] == "aborted"
+        assert len(warmup_calls) == 2
+
+    def test_end_round_aborts_active_game(self):
+        """Test that BROADCAST_END_LEAGUE_ROUND aborts active game."""
+        orchestrator = RLGMOrchestrator(config=make_config(), ai=MockRefereeAI())
+        # Walk state to RUNNING
+        orchestrator.state_machine.transition(RLGMEvent.SEASON_START)
+        orchestrator.state_machine.transition(RLGMEvent.REGISTRATION_ACCEPTED)
+        orchestrator.state_machine.transition(RLGMEvent.ASSIGNMENT_RECEIVED)
+
+        # Set up assignments and start round
+        orchestrator._assignments = [{
+            "round_number": 1, "game_id": "0101001",
+            "player1_email": "p1@test.com", "player1_id": "P001",
+            "player2_email": "p2@test.com", "player2_id": "P002",
+        }]
+        orchestrator._new_round_handler.assignments = orchestrator._assignments
+
+        new_round_msg = {
+            "message_type": "BROADCAST_NEW_LEAGUE_ROUND",
+            "broadcast_id": "BC003",
+            "payload": {"round_number": 1, "round_id": "ROUND_1"},
+        }
+        orchestrator.handle_lm_message(new_round_msg)
+        orchestrator.get_pending_outgoing()  # clear warmup msgs
+
+        # Now end round 1
+        end_round_msg = {
+            "message_type": "BROADCAST_END_LEAGUE_ROUND",
+            "broadcast_id": "BC004",
+            "payload": {"round_number": 1, "round_id": "ROUND_1"},
+        }
+        orchestrator.handle_lm_message(end_round_msg)
+
+        pending = orchestrator.get_pending_outgoing()
+        match_reports = [e for e, s, r in pending if e.get("message_type") == "MATCH_RESULT_REPORT"]
+        assert len(match_reports) == 1
+        assert match_reports[0]["payload"]["status"] == "aborted"
+        assert orchestrator.current_game is None
+
+    def test_same_round_number_is_idempotent_via_handle_lm_message(self):
+        """Test that the same round arriving twice doesn't create duplicate game."""
+        orchestrator = RLGMOrchestrator(config=make_config(), ai=MockRefereeAI())
+        orchestrator.state_machine.transition(RLGMEvent.SEASON_START)
+        orchestrator.state_machine.transition(RLGMEvent.REGISTRATION_ACCEPTED)
+        orchestrator.state_machine.transition(RLGMEvent.ASSIGNMENT_RECEIVED)
+
+        orchestrator._assignments = [{
+            "round_number": 1, "game_id": "0101001",
+            "player1_email": "p1@test.com", "player1_id": "P001",
+            "player2_email": "p2@test.com", "player2_id": "P002",
+        }]
+        orchestrator._new_round_handler.assignments = orchestrator._assignments
+
+        msg = {
+            "message_type": "BROADCAST_NEW_LEAGUE_ROUND",
+            "broadcast_id": "BC003",
+            "payload": {"round_number": 1, "round_id": "ROUND_1"},
+        }
+
+        orchestrator.handle_lm_message(msg)
+        first_game = orchestrator.current_game
+        orchestrator.get_pending_outgoing()  # clear
+
+        orchestrator.handle_lm_message(msg)
+        second_outgoing = orchestrator.get_pending_outgoing()
+
+        assert orchestrator.current_game is first_game  # Same game object
+        assert second_outgoing == []  # No new messages
