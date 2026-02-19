@@ -60,3 +60,35 @@ class TestBroadcastEndRoundHandler:
 
         assert handler.last_completed_round == 3
         assert handler.last_completed_round_id == "ROUND_3"
+
+    def test_returns_abort_signal_when_round_matches(self):
+        """Test that handler returns abort signal when ending active round."""
+        handler, state_machine = self.create_handler_in_running_state()
+        handler.current_round_number = 1  # Set active round
+        message = self.create_end_round_message(round_number=1)
+
+        result = handler.handle(message)
+
+        assert result is not None
+        assert result.get("abort_signal") is True
+        assert result.get("round_number") == 1
+
+    def test_returns_none_when_round_does_not_match(self):
+        """Test that handler returns None when ending a different round."""
+        handler, state_machine = self.create_handler_in_running_state()
+        handler.current_round_number = 2  # Active round is 2
+        message = self.create_end_round_message(round_number=1)  # Ending round 1
+
+        result = handler.handle(message)
+
+        assert result is None
+
+    def test_returns_none_when_no_active_round(self):
+        """Test that handler returns None when no round is active."""
+        handler, state_machine = self.create_handler_in_running_state()
+        # current_round_number is None by default
+        message = self.create_end_round_message(round_number=1)
+
+        result = handler.handle(message)
+
+        assert result is None

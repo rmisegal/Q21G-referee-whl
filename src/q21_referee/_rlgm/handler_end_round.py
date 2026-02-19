@@ -39,6 +39,7 @@ class BroadcastEndRoundHandler(BaseBroadcastHandler):
         self.state_machine = state_machine
         self.last_completed_round: Optional[int] = None
         self.last_completed_round_id: Optional[str] = None
+        self.current_round_number: Optional[int] = None
 
     def handle(self, message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
@@ -62,6 +63,15 @@ class BroadcastEndRoundHandler(BaseBroadcastHandler):
         self.last_completed_round_id = round_id
 
         logger.info(f"Round {round_number} ({round_id}) completed")
+
+        # Signal abort if this round matches the active round
+        if (self.current_round_number is not None
+                and round_number == self.current_round_number):
+            return {
+                "abort_signal": True,
+                "round_number": round_number,
+                "round_id": round_id,
+            }
 
         # No response needed
         return None
