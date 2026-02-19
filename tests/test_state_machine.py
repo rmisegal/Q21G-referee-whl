@@ -86,6 +86,18 @@ class TestRLGMStateMachineTransitions:
         sm.transition(RLGMEvent.REGISTRATION_REJECTED)
         assert sm.current_state == RLGMState.INIT_START_STATE
 
+    def test_game_aborted_transitions_to_running(self):
+        """Test that GAME_ABORTED from IN_GAME goes to RUNNING."""
+        sm = RLGMStateMachine()
+        sm.transition(RLGMEvent.SEASON_START)
+        sm.transition(RLGMEvent.REGISTRATION_ACCEPTED)
+        sm.transition(RLGMEvent.ASSIGNMENT_RECEIVED)
+        sm.transition(RLGMEvent.ROUND_START)
+        assert sm.current_state == RLGMState.IN_GAME
+
+        sm.transition(RLGMEvent.GAME_ABORTED)
+        assert sm.current_state == RLGMState.RUNNING
+
 
 class TestRLGMStateMachinePauseResume:
     """Tests for pause/resume/reset functionality."""

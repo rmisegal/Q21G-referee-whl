@@ -31,6 +31,7 @@ TRANSITIONS = {
     },
     RLGMState.IN_GAME: {
         RLGMEvent.GAME_COMPLETE: RLGMState.RUNNING,
+        RLGMEvent.GAME_ABORTED: RLGMState.RUNNING,
     },
     RLGMState.PAUSED: {},
     RLGMState.COMPLETED: {},
