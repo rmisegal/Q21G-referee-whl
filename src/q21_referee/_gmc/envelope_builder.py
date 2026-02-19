@@ -195,7 +195,10 @@ class EnvelopeBuilder:
     def build_match_result(self, game_id: str, match_id: str,
                            round_id: str, winner_id: str,
                            is_draw: bool, scores: list,
-                           correlation_id: str = None) -> tuple[dict, str]:
+                           correlation_id: str = None,
+                           status: str = "completed",
+                           abort_reason: str = None,
+                           player_states: dict = None) -> tuple[dict, str]:
         msg_id = _msg_id(f"result-{match_id}")
 
         env = self._base_league_envelope(
@@ -204,11 +207,15 @@ class EnvelopeBuilder:
             correlation_id=correlation_id)
         env["payload"] = {
             "match_id": match_id,
-            "status": "completed",
+            "status": status,
             "winner_id": winner_id,
             "is_draw": is_draw,
             "scores": scores,
         }
+        if abort_reason:
+            env["payload"]["abort_reason"] = abort_reason
+        if player_states:
+            env["payload"]["player_states"] = player_states
         subject = _email_subject("league.v2", "REFEREE", self.referee_email,
                                   msg_id, "MATCH_RESULT_REPORT")
         return env, subject
