@@ -1,6 +1,6 @@
 # PRD: RLGM - Referee League Game Manager
 
-**Version:** 1.0.0
+**Version:** 2.0.0
 **Area:** Season & Game Orchestration
 **PRD:** docs/prd-rlgm.md
 
@@ -141,12 +141,15 @@ class GameResult:
 
     game_id: str
     match_id: str
-    status: str             # "completed" | "aborted" | "timeout"
-
-    winner_id: Optional[str]  # None if draw
+    round_id: str
+    season_id: str
+    player1: PlayerScore
+    player2: PlayerScore
+    winner_id: Optional[str]
     is_draw: bool
-
-    scores: List[PlayerScore]
+    status: str = "completed"              # "completed" | "aborted"
+    abort_reason: Optional[str] = None     # "new_round_started" | "end_round_received"
+    player_states: Optional[dict] = None   # per-player phase snapshot with last_actor
 
 @dataclass
 class PlayerScore:
@@ -196,31 +199,29 @@ LEAGUE MANAGER                    RLGM                              GMC
       | RESPONSE_GROUP_ASSIGNMENT  |                                 |
 ```
 
-### 6.3 Game Execution Flow
+### 6.3 Game Execution Flow (Reformed)
 
-```
-LEAGUE MANAGER                    RLGM                              GMC
-      |                            |                                 |
-      | BROADCAST_NEW_LEAGUE_ROUND |                                 |
-      |--------------------------->|                                 |
-      |                            | [Query assignments for round]   |
-      |                            | [For each assigned game:]       |
-      |                            |                                 |
-      |                            | [Build GPRM from assignment]    |
-      |                            |-------------------------------->|
-      |                            |         start_game(GPRM)        |
-      |                            |                                 |
-      |                            |         [GMC manages game]      |
-      |                            |         [Sends Q21 messages     |
-      |                            |          to players directly]   |
-      |                            |                                 |
-      |                            |<--------------------------------|
-      |                            |       GameResult                |
-      |                            |                                 |
-      |                            | [Store result in DB]            |
-      |<---------------------------|                                 |
-      |    MATCH_RESULT_REPORT     |                                 |
-```
+The orchestrator owns the round lifecycle with three operations:
+
+**start_round(gprm)**
+1. If same round already active -> skip (idempotent)
+2. If different game active -> abort_current_game("new_round_started")
+3. Create new GMC with GPRM
+4. Call AI warmup callback, build Q21WARMUPCALL envelopes
+5. Advance GMC phase to WARMUP_SENT
+
+**abort_current_game(reason)**
+1. Snapshot per-player state via get_state_snapshot()
+2. Score eligible players (who submitted guesses but not yet scored)
+3. Build MATCH_RESULT_REPORT with status="aborted", player_states, last_actor
+4. Clear current_game, transition state machine GAME_ABORTED -> RUNNING
+
+**complete_game()**
+1. Called when GMC reports is_complete() after routing a player message
+2. Build GameResult with status="completed"
+3. Clear current_game, transition GAME_COMPLETE -> RUNNING
+
+GMC is a pure game engine -- it only routes player messages (Q21WARMUPRESPONSE, Q21QUESTIONSBATCH, Q21GUESSSUBMISSION). Round initiation is handled by the orchestrator via warmup_initiator.py.
 
 ---
 
@@ -250,7 +251,7 @@ LEAGUE MANAGER                    RLGM                              GMC
 +-----------------+                      |
 |     IN_GAME     | (GMC executing)      |
 +--------+--------+                      |
-         | Game complete                 |
+         | Game complete | GAME_ABORTED  |
          | (Send MATCH_RESULT_REPORT)    |
          +-------------------------------+
 ```
@@ -329,6 +330,21 @@ CREATE TABLE broadcasts_received (
 | `sdk/protocol_sdk/messages_league.py` | Keep in `sdk/` | LM message schemas |
 | `src/domain/models/envelope.py` | `src/q21_referee/_rlgm/envelope.py` | Message envelope |
 | `src/domain/services/response_builder.py` | `src/q21_referee/_rlgm/response_builder.py` | Build responses |
+
+## 9.1 New Files (Message System Reform v2.0.0)
+
+| File | Purpose |
+|------|---------|
+| `_rlgm/warmup_initiator.py` | Builds warmup calls for new rounds (extracted from orchestrator) |
+| `_rlgm/abort_handler.py` | Abort scoring, winner determination, score building |
+| `_gmc/snapshot.py` | Per-player state snapshot builder for abort reporting |
+
+### Removed Code
+| What | Where |
+|------|-------|
+| `handle_new_round()` function | Deleted from `_gmc/handlers/warmup.py` |
+| `initiate_game()` method | Deleted from `_gmc/gmc.py` |
+| `BROADCAST_NEW_LEAGUE_ROUND` route | Removed from `_gmc/router.py` |
 
 ---
 
