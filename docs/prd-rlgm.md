@@ -1,6 +1,6 @@
 # PRD: RLGM - Referee League Game Manager
 
-**Version:** 2.0.0
+**Version:** 2.1.0
 **Area:** Season & Game Orchestration
 **PRD:** docs/prd-rlgm.md
 
@@ -346,6 +346,16 @@ CREATE TABLE broadcasts_received (
 | `initiate_game()` method | Deleted from `_gmc/gmc.py` |
 | `BROADCAST_NEW_LEAGUE_ROUND` route | Removed from `_gmc/router.py` |
 
+### Audit Fixes (v2.1.0)
+
+| Fix | File(s) | Description |
+|-----|---------|-------------|
+| Resilient abort callback | `abort_handler.py` | Uses `execute_callback_safe` with try/except; callback failures produce zero-score defaults |
+| None guards | `snapshot.py`, `abort_handler.py`, `warmup_initiator.py` | All player access points guard against `None` players |
+| Phase tracking accuracy | `questions.py`, `scoring.py`, `state.py` | Phase advances correctly: `QUESTIONS_COLLECTING` after first player, `ANSWERS_SENT` after both; `GUESSES_COLLECTING` after first score |
+| Context type docs | `types.py` | TypedDicts updated to document wrapped `{dynamic, service}` context structure |
+| Assignment validation | `handler_new_round.py` | Required fields validated before GPRM creation; missing fields prevent round start |
+
 ---
 
 ## 10. Interface Between RLGM and GMC
@@ -370,6 +380,8 @@ class RLGMOrchestrator:
 
         1. Snapshot per-player state via get_state_snapshot()
         2. Score players who submitted guesses (via abort_handler)
+           - Uses execute_callback_safe (resilient: callback failures
+             produce zero-score defaults instead of crashing)
         3. Build MATCH_RESULT_REPORT with status="aborted"
         4. Transition state machine GAME_ABORTED → RUNNING
         """
