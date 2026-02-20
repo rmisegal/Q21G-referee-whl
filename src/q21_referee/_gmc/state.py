@@ -94,6 +94,10 @@ class GameState:
             return self.player2
         return None
 
+    def both_answers_sent(self) -> bool:
+        return (self.player1 is not None and self.player1.answers_sent
+                and self.player2 is not None and self.player2.answers_sent)
+
     def both_scores_sent(self) -> bool:
         return (self.player1 is not None and self.player1.score_sent
                 and self.player2 is not None and self.player2.score_sent)

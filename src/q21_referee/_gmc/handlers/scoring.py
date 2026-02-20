@@ -81,7 +81,7 @@ def handle_guess(ctx) -> List[Tuple[dict, str, str]]:
         outgoing.extend(_build_match_result(ctx))
         ctx.state.advance_phase(GamePhase.MATCH_REPORTED)
     else:
-        ctx.state.advance_phase(GamePhase.SCORING_COMPLETE)
+        ctx.state.advance_phase(GamePhase.GUESSES_COLLECTING)
 
     return outgoing
 

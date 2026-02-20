@@ -59,5 +59,8 @@ def handle_questions(ctx) -> List[Tuple[dict, str, str]]:
     player.answers_sent = True
     player.guess_message_id = env["message_id"]
 
-    ctx.state.advance_phase(GamePhase.ANSWERS_SENT)
+    if ctx.state.both_answers_sent():
+        ctx.state.advance_phase(GamePhase.ANSWERS_SENT)
+    else:
+        ctx.state.advance_phase(GamePhase.QUESTIONS_COLLECTING)
     return [(env, subject, player.email)]
