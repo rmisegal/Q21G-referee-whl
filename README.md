@@ -240,7 +240,7 @@ runner.run()
 | Key | Required | Description |
 |-----|----------|-------------|
 | `referee_id` | Yes | Your assigned referee ID (e.g., "REF001") |
-| `group_id` | Yes | Your group ID from league registration |
+| `group_id` | No | Your group ID (optional metadata) |
 | `display_name` | No | Display name (default: "Q21 Referee") |
 | `league_manager_email` | Yes | League Manager email |
 | `poll_interval_seconds` | No | Email polling interval (default: 5) |

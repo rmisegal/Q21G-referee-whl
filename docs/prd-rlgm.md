@@ -1,6 +1,6 @@
 # PRD: RLGM - Referee League Game Manager
 
-**Version:** 2.2.0
+**Version:** 2.3.0
 **Area:** Season & Game Orchestration
 **PRD:** docs/prd-rlgm.md
 
@@ -28,20 +28,20 @@ The current GMC implementation:
 - Lacks handlers for season lifecycle messages (BROADCAST_START_SEASON, BROADCAST_ASSIGNMENT_TABLE, etc.)
 - Cannot dynamically receive game assignments from League Manager
 
-**Gap Analysis:**
+**Gap Analysis (post-reform):**
 
-| Message | GMC Status | Required |
-|---------|------------|----------|
-| BROADCAST_START_SEASON | No handler | Yes |
-| SEASON_REGISTRATION_RESPONSE | No handler | Yes |
-| BROADCAST_ASSIGNMENT_TABLE | No handler | Yes |
-| BROADCAST_NEW_LEAGUE_ROUND | Orchestrator only (removed from GMC) | Yes |
-| BROADCAST_END_LEAGUE_ROUND | No handler | Yes |
-| BROADCAST_END_SEASON | No handler | Yes |
-| LEAGUE_COMPLETED | No handler | Yes |
-| Q21WARMUPRESPONSE | Has handler | Yes |
-| Q21QUESTIONSBATCH | Has handler | Yes |
-| Q21GUESSSUBMISSION | Has handler | Yes |
+| Message | Layer | Handler |
+|---------|-------|---------|
+| BROADCAST_START_SEASON | RLGM | `handler_start_season.py` |
+| SEASON_REGISTRATION_RESPONSE | RLGM | `handler_registration_response.py` |
+| BROADCAST_ASSIGNMENT_TABLE | RLGM | `handler_assignment.py` |
+| BROADCAST_NEW_LEAGUE_ROUND | RLGM | `handler_new_round.py` |
+| BROADCAST_END_LEAGUE_ROUND | RLGM | `handler_end_round.py` |
+| BROADCAST_END_SEASON | RLGM | `handler_end_season.py` |
+| LEAGUE_COMPLETED | Runner | Accepted and logged; no active handler (terminal signal) |
+| Q21WARMUPRESPONSE | GMC | `handlers/warmup.py` |
+| Q21QUESTIONSBATCH | GMC | `handlers/questions.py` |
+| Q21GUESSSUBMISSION | GMC | `handlers/scoring.py` |
 
 ---
 
@@ -72,7 +72,8 @@ The current GMC implementation:
 |  |   - Q21GUESSSUBMISSION -> Q21SCOREFEEDBACK                          ||
 |  |                                                                     ||
 |  | Output: GameResult                                                  ||
-|  |   - winner_id, is_draw, scores[], feedback                          ||
+|  |   - player1: PlayerScore, player2: PlayerScore                      ||
+|  |   - winner_id, is_draw, status, player_states                       ||
 |  +---------------------------------------------------------------------+|
 |                                 ^                                       |
 |                                 | (GPRM input, GameResult output)       |
@@ -192,7 +193,7 @@ LEAGUE MANAGER                    RLGM                              GMC
       | BROADCAST_ASSIGNMENT_TABLE |                                 |
       |--------------------------->|                                 |
       |                            | [Extract assignments where      |
-      |                            |  group_id matches]              |
+      |                            |  referee_email matches]         |
       |                            | [Store in round_assignments DB] |
       |                            |                                 |
       |<---------------------------|                                 |
@@ -332,34 +333,23 @@ CREATE TABLE IF NOT EXISTS broadcasts_received (
     received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     processed INTEGER NOT NULL DEFAULT 1
 );
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_assignments_season
+    ON round_assignments(season_id);
+CREATE INDEX IF NOT EXISTS idx_assignments_round
+    ON round_assignments(season_id, round_number);
+CREATE INDEX IF NOT EXISTS idx_results_season
+    ON match_results(season_id);
+CREATE INDEX IF NOT EXISTS idx_broadcasts_type
+    ON broadcasts_received(message_type);
 ```
 
 ---
 
-## 9. Files to Copy from GmailAsReferee
+## 9. Change History
 
-### Core RLGM Components:
-
-| Source File | Target Location | Purpose |
-|-------------|-----------------|---------|
-| `src/domain/services/broadcast_router.py` | `src/q21_referee/_rlgm/broadcast_router.py` | Route LM messages |
-| `src/domain/services/broadcast_handlers_season.py` | `src/q21_referee/_rlgm/handlers_season.py` | Season handlers |
-| `src/domain/services/broadcast_handlers_lifecycle.py` | `src/q21_referee/_rlgm/handlers_lifecycle.py` | Round handlers |
-| `src/domain/services/broadcast_assignment_handler.py` | `src/q21_referee/_rlgm/handlers_assignment.py` | Assignment handler |
-| `src/domain/services/assignment_handler.py` | `src/q21_referee/_rlgm/assignment_handler.py` | Parse assignments |
-| `src/domain/services/referee_state_machine.py` | `src/q21_referee/_rlgm/state_machine.py` | RLGM state machine |
-| `src/domain/services/round_start_service.py` | `src/q21_referee/_rlgm/round_start_service.py` | Start games |
-| `src/domain/models/referee_state.py` | `src/q21_referee/_rlgm/models.py` | State enums |
-
-### Shared Components:
-
-| Source File | Target Location | Purpose |
-|-------------|-----------------|---------|
-| `sdk/protocol_sdk/messages_league.py` | Keep in `sdk/` | LM message schemas |
-| `src/domain/models/envelope.py` | `src/q21_referee/_rlgm/envelope.py` | Message envelope |
-| `src/domain/services/response_builder.py` | `src/q21_referee/_rlgm/response_builder.py` | Build responses |
-
-## 9.1 New Files (Message System Reform v2.0.0)
+### 9.1 New Files (Message System Reform v2.0.0)
 
 | File | Purpose |
 |------|---------|
@@ -502,10 +492,11 @@ config = {
     "credentials_path": "credentials.json",          # OAuth credentials
     "token_path": "token.json",                      # OAuth token (auto-created)
     "league_id": "LEAGUE001",
-    "group_id": "my-group",  # Used for assignment filtering
+    "group_id": "my-group",                          # Optional metadata
     "poll_interval_seconds": 5,
 }
 # Note: referee_email is set automatically from OAuth credentials
+# Assignment filtering uses referee_email (not group_id)
 
 runner = RLGMRunner(config=config, ai=MyRefereeAI())
 runner.run()  # RLGM handles everything else!
