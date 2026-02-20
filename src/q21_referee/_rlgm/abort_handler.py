@@ -13,10 +13,17 @@ from typing import Any, Dict, List, Tuple
 from .._gmc.gmc import GameManagementCycle
 from .._gmc.state import PlayerState
 from .._gmc.context_builder import ContextBuilder, SERVICE_DEFINITIONS
-from .._gmc.callback_executor import execute_callback
+from .._gmc.callback_executor import execute_callback_safe
 from ..callbacks import RefereeAI
 
 logger = logging.getLogger("q21_referee.rlgm.abort")
+
+_ABORT_SCORE_DEFAULTS = {
+    "league_points": 0,
+    "private_score": 0.0,
+    "breakdown": {},
+    "feedback": None,
+}
 
 
 def score_player_on_abort(
@@ -30,12 +37,20 @@ def score_player_on_abort(
     callback_ctx = ctx_builder.build_score_feedback_ctx(player, player.guess)
 
     service = SERVICE_DEFINITIONS["score_feedback"]
-    result = execute_callback(
-        callback_fn=ai.get_score_feedback,
-        callback_name="score_feedback",
-        ctx=callback_ctx,
-        deadline_seconds=service["deadline_seconds"],
-    )
+    try:
+        result = execute_callback_safe(
+            callback_fn=ai.get_score_feedback,
+            callback_name="score_feedback",
+            ctx=callback_ctx,
+            deadline_seconds=service["deadline_seconds"],
+        )
+    except Exception:
+        logger.error(
+            "Abort scoring failed for %s — using zero defaults",
+            player.participant_id,
+            exc_info=True,
+        )
+        result = dict(_ABORT_SCORE_DEFAULTS)
 
     league_points = result.get("league_points", 0)
     private_score = result.get("private_score", 0.0)
