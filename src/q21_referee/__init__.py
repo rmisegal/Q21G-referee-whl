@@ -46,7 +46,6 @@ from .errors import (
 )
 from .types import (
     # Warmup types
-    PlayerInfo,
     WarmupContext,
     WarmupResponse,
     # Round start types
@@ -78,7 +77,6 @@ __all__ = [
     "InvalidJSONResponseError",
     "SchemaValidationError",
     # Warmup types
-    "PlayerInfo",
     "WarmupContext",
     "WarmupResponse",
     # Round start types

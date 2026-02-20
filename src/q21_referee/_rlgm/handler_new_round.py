@@ -80,6 +80,8 @@ class BroadcastNewRoundHandler(BaseBroadcastHandler):
 
         # Build GPRM
         gprm = self._build_gprm(assignment, round_number, round_id)
+        if not gprm:
+            return None
 
         # Transition to IN_GAME (force=True for out-of-order tolerance)
         self.state_machine.transition(RLGMEvent.ROUND_START, force=True)
@@ -100,17 +102,27 @@ class BroadcastNewRoundHandler(BaseBroadcastHandler):
 
     def _build_gprm(
         self, assignment: Dict[str, Any], round_number: int, round_id: str
-    ) -> GPRM:
-        """Build GPRM from assignment and config."""
-        game_id = assignment.get("game_id", "")
+    ) -> Optional[GPRM]:
+        """Build GPRM from assignment and config.
+
+        Returns None if required fields are missing or empty.
+        """
+        required = [
+            "player1_email", "player1_id",
+            "player2_email", "player2_id", "game_id",
+        ]
+        missing = [f for f in required if not assignment.get(f)]
+        if missing:
+            logger.error(f"Assignment missing required fields: {missing}")
+            return None
         return GPRM(
-            player1_email=assignment.get("player1_email", ""),
-            player1_id=assignment.get("player1_id", ""),
-            player2_email=assignment.get("player2_email", ""),
-            player2_id=assignment.get("player2_id", ""),
+            player1_email=assignment["player1_email"],
+            player1_id=assignment["player1_id"],
+            player2_email=assignment["player2_email"],
+            player2_id=assignment["player2_id"],
             season_id=self.config.get("season_id", ""),
-            game_id=game_id,
-            match_id=game_id,  # Use game_id as match_id
+            game_id=assignment["game_id"],
+            match_id=assignment["game_id"],
             round_id=round_id,
             round_number=round_number,
         )

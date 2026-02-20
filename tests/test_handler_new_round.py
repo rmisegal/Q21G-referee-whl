@@ -32,6 +32,7 @@ class TestBroadcastNewRoundHandler:
                 "round_number": 1,
                 "round_id": "ROUND_1",
                 "match_id": "R1M1",
+                "game_id": "0101001",
                 "player1_id": "P001",
                 "player1_email": "p1@test.com",
                 "player2_id": "P002",
@@ -41,6 +42,7 @@ class TestBroadcastNewRoundHandler:
                 "round_number": 2,
                 "round_id": "ROUND_2",
                 "match_id": "R2M1",
+                "game_id": "0102001",
                 "player1_id": "P001",
                 "player1_email": "p1@test.com",
                 "player2_id": "P003",
@@ -150,4 +152,48 @@ class TestBroadcastNewRoundHandler:
         result = handler.handle(message)
 
         # Should default to round 0 and not find assignment
+        assert result is None
+
+    def test_handle_rejects_assignment_missing_player_fields(self):
+        """GPRM should not be built with missing required player fields."""
+        state_machine = RLGMStateMachine()
+        state_machine.transition(RLGMEvent.SEASON_START)
+        state_machine.transition(RLGMEvent.REGISTRATION_ACCEPTED)
+        state_machine.transition(RLGMEvent.ASSIGNMENT_RECEIVED)
+
+        config = {"season_id": "S01"}
+        handler = BroadcastNewRoundHandler(state_machine, config, assignments=[
+            {"round_number": 1, "game_id": "0101001",
+             "player1_email": "p1@test.com", "player1_id": "P001"}
+            # missing player2_email and player2_id
+        ])
+
+        msg = {
+            "message_type": "BROADCAST_NEW_LEAGUE_ROUND",
+            "broadcast_id": "BC003",
+            "payload": {"round_number": 1, "round_id": "ROUND_1"},
+        }
+        result = handler.handle(msg)
+        assert result is None  # Should reject, not silently create GPRM
+
+    def test_handle_rejects_assignment_empty_email(self):
+        """GPRM should not be built when email is empty string."""
+        state_machine = RLGMStateMachine()
+        state_machine.transition(RLGMEvent.SEASON_START)
+        state_machine.transition(RLGMEvent.REGISTRATION_ACCEPTED)
+        state_machine.transition(RLGMEvent.ASSIGNMENT_RECEIVED)
+
+        config = {"season_id": "S01"}
+        handler = BroadcastNewRoundHandler(state_machine, config, assignments=[
+            {"round_number": 1, "game_id": "0101001",
+             "player1_email": "p1@test.com", "player1_id": "P001",
+             "player2_email": "", "player2_id": "P002"}
+        ])
+
+        msg = {
+            "message_type": "BROADCAST_NEW_LEAGUE_ROUND",
+            "broadcast_id": "BC003",
+            "payload": {"round_number": 1, "round_id": "ROUND_1"},
+        }
+        result = handler.handle(msg)
         assert result is None
