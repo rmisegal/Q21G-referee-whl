@@ -1,6 +1,6 @@
 # PRD: RLGM - Referee League Game Manager
 
-**Version:** 2.1.0
+**Version:** 2.2.0
 **Area:** Season & Game Orchestration
 **PRD:** docs/prd-rlgm.md
 
@@ -108,9 +108,9 @@ The current GMC implementation:
 ## 4. GPRM (Game Parameters) Specification
 
 ```python
-@dataclass
+@dataclass(frozen=True)
 class GPRM:
-    """Game Parameters passed from RLGM to GMC for each game."""
+    """Game Parameters passed from RLGM to GMC for each game (immutable)."""
 
     # Player 1
     player1_email: str      # e.g., "alice@gmail.com"
@@ -229,80 +229,108 @@ GMC is a pure game engine -- it only routes player messages (Q21WARMUPRESPONSE, 
 
 ```
 +-----------------+
-| INIT_START_STATE|
-+--------+--------+
-         | BROADCAST_START_SEASON
+| INIT_START_STATE|<---------- REGISTRATION_REJECTED
++--------+--------+<---------- RESET (from any state)
+         | SEASON_START
          v
 +-------------------------+
 | WAITING_FOR_CONFIRMATION| --> Send SEASON_REGISTRATION_REQUEST
 +--------+----------------+
-         | SEASON_REGISTRATION_RESPONSE (accepted)
+         | REGISTRATION_ACCEPTED
          v
 +------------------------+
 | WAITING_FOR_ASSIGNMENT |
 +--------+---------------+
-         | BROADCAST_ASSIGNMENT_TABLE
+         | ASSIGNMENT_RECEIVED
          v
 +-----------------+
 |     RUNNING     |<---------------------+
 +--------+--------+                      |
-         | BROADCAST_NEW_LEAGUE_ROUND    |
+         | ROUND_START                   |
          v                               |
 +-----------------+                      |
 |     IN_GAME     | (GMC executing)      |
 +--------+--------+                      |
-         | Game complete | GAME_ABORTED  |
+         | GAME_COMPLETE | GAME_ABORTED  |
          | (Send MATCH_RESULT_REPORT)    |
          +-------------------------------+
+         |
+         | SEASON_END (from RUNNING)
+         v
++-----------------+
+|    COMPLETED    |
++-----------------+
+
+Special transitions (not shown above):
+- PAUSE: Any state → PAUSED (saves current state)
+- CONTINUE: PAUSED → saved state (resume)
+- RESET: Any state → INIT_START_STATE
 ```
 
 ---
 
-## 8. Database Schema (from GmailAsReferee)
+## 8. Database Schema
 
-### Tables to Reuse:
+SQLite schema defined in `_rlgm/schema.sql`:
 
 ```sql
 -- Season registration tracking
-CREATE TABLE referee_seasons (
-    season_id VARCHAR PRIMARY KEY,
-    league_id VARCHAR,
-    registration_status VARCHAR,  -- PENDING, CONFIRMED, REJECTED
-    broadcast_id VARCHAR,
-    created_at TIMESTAMP
+CREATE TABLE IF NOT EXISTS referee_seasons (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    season_id TEXT NOT NULL UNIQUE,
+    league_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    -- Status: pending, registered, active, completed, rejected
+    registered_at TIMESTAMP,
+    started_at TIMESTAMP,
+    completed_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Game assignments per round
-CREATE TABLE round_assignments (
-    id SERIAL PRIMARY KEY,
-    season_id VARCHAR,
-    game_id VARCHAR,              -- 7-digit format
-    round_number INTEGER,
-    player1_email VARCHAR,
-    player2_email VARCHAR,
-    referee_email VARCHAR,
-    assignment_status VARCHAR,    -- PENDING, IN_PROGRESS, COMPLETED
-    UNIQUE(season_id, game_id)
+-- Match assignments per round
+CREATE TABLE IF NOT EXISTS round_assignments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    season_id TEXT NOT NULL,
+    round_number INTEGER NOT NULL,
+    round_id TEXT NOT NULL,
+    match_id TEXT NOT NULL,
+    group_id TEXT NOT NULL,
+    player1_id TEXT NOT NULL,
+    player1_email TEXT NOT NULL,
+    player2_id TEXT NOT NULL,
+    player2_email TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    -- Status: pending, in_progress, completed
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP,
+    UNIQUE(season_id, round_number, match_id)
 );
 
--- Active matches being played
-CREATE TABLE assigned_matches (
-    match_id VARCHAR PRIMARY KEY,
-    season_id VARCHAR,
-    game_id VARCHAR,
-    round_number INTEGER,
-    player_a_email VARCHAR,
-    player_b_email VARCHAR,
-    status VARCHAR,               -- PENDING, IN_PROGRESS, COMPLETED
-    created_at TIMESTAMP
+-- Completed game results
+CREATE TABLE IF NOT EXISTS match_results (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    season_id TEXT NOT NULL,
+    round_id TEXT NOT NULL,
+    match_id TEXT NOT NULL,
+    game_id TEXT NOT NULL,
+    winner_id TEXT,
+    is_draw INTEGER NOT NULL DEFAULT 0,
+    player1_id TEXT NOT NULL,
+    player1_score INTEGER NOT NULL,
+    player2_id TEXT NOT NULL,
+    player2_score INTEGER NOT NULL,
+    completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    reported_at TIMESTAMP,
+    UNIQUE(season_id, match_id)
 );
 
 -- Broadcast deduplication
-CREATE TABLE broadcasts_received (
-    broadcast_id VARCHAR PRIMARY KEY,
-    message_type VARCHAR,
-    payload JSONB,
-    processed_at TIMESTAMP
+CREATE TABLE IF NOT EXISTS broadcasts_received (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    broadcast_id TEXT NOT NULL UNIQUE,
+    message_type TEXT NOT NULL,
+    received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    processed INTEGER NOT NULL DEFAULT 1
 );
 ```
 
@@ -459,7 +487,7 @@ def _build_game_result(self) -> GameResult:
 Students continue to use the same API:
 
 ```python
-from q21_referee import RefereeRunner, RefereeAI
+from q21_referee import RLGMRunner, RefereeAI
 
 class MyRefereeAI(RefereeAI):
     def get_warmup_question(self, ctx): ...
@@ -467,18 +495,19 @@ class MyRefereeAI(RefereeAI):
     def get_answers(self, ctx): ...
     def get_score_feedback(self, ctx): ...
 
-# Simple config (no more hardcoded player emails!)
+# Required config (OAuth credentials loaded from files)
 config = {
-    "referee_email": "my-referee@gmail.com",
-    "referee_password": "app-password",
-    "referee_id": "R001",
-    "league_manager_email": "league@example.com",
+    "referee_id": "R001",                            # Required
+    "league_manager_email": "league@example.com",    # Required
+    "credentials_path": "credentials.json",          # OAuth credentials
+    "token_path": "token.json",                      # OAuth token (auto-created)
     "league_id": "LEAGUE001",
-    "group_id": "my-group",  # NEW: Used for assignment filtering
+    "group_id": "my-group",  # Used for assignment filtering
     "poll_interval_seconds": 5,
 }
+# Note: referee_email is set automatically from OAuth credentials
 
-runner = RefereeRunner(config=config, ai=MyRefereeAI())
+runner = RLGMRunner(config=config, ai=MyRefereeAI())
 runner.run()  # RLGM handles everything else!
 ```
 
@@ -494,12 +523,20 @@ class RLGMRunner:
         self.email_client = EmailClient(...)
         self.orchestrator = RLGMOrchestrator(config=config, ai=ai)
 
-    def _route_message(self, message_type, body, sender):
+    def _route_message(self, message_type: str, body: dict,
+                       sender: str) -> List[Tuple[dict, str, str]]:
         outgoing = []
 
         if is_lm_message(message_type):
             result = self.orchestrator.handle_lm_message(body)
             if result:
+                lm_email = self.config.get("league_manager_email", "")
+                response_type = result.get("message_type", "RESPONSE")
+                subject = build_subject(
+                    role="REFEREE", email=self.email_client.address,
+                    message_type=response_type,
+                    tx_id=result.get("message_id"),
+                )
                 outgoing.append((result, subject, lm_email))
             # Collect pending messages (warmup calls, abort reports)
             outgoing.extend(self.orchestrator.get_pending_outgoing())
@@ -510,6 +547,8 @@ class RLGMRunner:
 
         return outgoing
 ```
+
+The runner also manages protocol logger context (game_id formatting per message type) and sends all outgoing messages via `EmailClient`.
 
 ---
 
@@ -550,6 +589,7 @@ class RLGMRunner:
 q21-referee-sdk/
 ├── src/q21_referee/
 │   ├── __init__.py              # Public API exports
+│   ├── __main__.py              # Entry point for `python -m q21_referee`
 │   ├── callbacks.py             # RefereeAI abstract class (student implements)
 │   ├── runner.py                # RefereeRunner (single-game mode)
 │   ├── rlgm_runner.py           # RLGMRunner (season mode, default)
@@ -560,6 +600,7 @@ q21-referee-sdk/
 │   ├── _runner_config.py        # Configuration validation
 │   │
 │   ├── _gmc/                    # GMC Layer (pure game engine)
+│   │   ├── __init__.py
 │   │   ├── gmc.py               # GameManagementCycle wrapper
 │   │   ├── state.py             # GameState, GamePhase, PlayerState
 │   │   ├── router.py            # Player message router (no broadcast routes)
@@ -569,13 +610,15 @@ q21-referee-sdk/
 │   │   ├── validator.py         # Protocol validation
 │   │   ├── snapshot.py          # Per-player state snapshot (abort reporting)
 │   │   └── handlers/
+│   │       ├── __init__.py
 │   │       ├── warmup.py        # handle_warmup_response only
 │   │       ├── questions.py
 │   │       └── scoring.py
 │   │
 │   ├── _rlgm/                   # RLGM Layer (season orchestration)
+│   │   ├── __init__.py
 │   │   ├── orchestrator.py      # Round lifecycle: start_round, abort, complete
-│   │   ├── state_machine.py     # RLGM state machine
+│   │   ├── state_machine.py     # RLGM state machine (incl. pause/resume/reset)
 │   │   ├── enums.py             # RLGMState, RLGMEvent (incl. GAME_ABORTED)
 │   │   ├── gprm.py              # GPRM frozen dataclass
 │   │   ├── game_result.py       # GameResult + PlayerScore dataclasses
@@ -583,11 +626,12 @@ q21-referee-sdk/
 │   │   ├── response_builder.py  # Build LM responses
 │   │   ├── warmup_initiator.py  # Build warmup calls for new rounds
 │   │   ├── abort_handler.py     # Abort scoring, winner determination
+│   │   ├── schema.sql           # SQLite database schema
 │   │   ├── handler_base.py      # Base handler class
 │   │   ├── handler_start_season.py
 │   │   ├── handler_registration_response.py
 │   │   ├── handler_assignment.py
-│   │   ├── handler_new_round.py # Builds GPRM from assignments
+│   │   ├── handler_new_round.py # Builds GPRM from assignments (with validation)
 │   │   ├── handler_end_round.py # Signals abort for active round
 │   │   ├── handler_end_season.py
 │   │   ├── handler_keep_alive.py
@@ -600,6 +644,7 @@ q21-referee-sdk/
 │   │   └── repo_seasons.py
 │   │
 │   └── _shared/                 # Shared utilities
+│       ├── __init__.py
 │       ├── email_client.py      # Gmail OAuth client
 │       ├── logging_config.py    # Colored logging setup
 │       ├── protocol.py          # Protocol constants, envelope building

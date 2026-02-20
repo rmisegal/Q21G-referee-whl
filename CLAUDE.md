@@ -70,13 +70,14 @@ Gmail API (OAuth-based communication)
    | GMC (Game Lifecycle) | `docs/prd-rlgm.md` | `_gmc/` |
    | Protocol & Email | `docs/prd-rlgm.md` | `_shared/` |
    | Student Callbacks | — | `callbacks.py`, `types.py` |
-   | Demo Mode | — | `demo_ai.py`, `demo_data/` |
+   | Demo Mode | — | `demo_ai.py`, `demo_data/` (repo root) |
 
 ## Project Structure
 
 ```
 src/q21_referee/
 ├── __init__.py              # Public API exports
+├── __main__.py              # Entry point for `python -m q21_referee`
 ├── callbacks.py             # RefereeAI abstract class (student implements)
 ├── types.py                 # TypedDict definitions for callbacks
 ├── runner.py                # RefereeRunner (single-game mode)
@@ -87,14 +88,18 @@ src/q21_referee/
 ├── _runner_config.py        # Configuration validation
 │
 ├── _rlgm/                   # RLGM Layer (season orchestration)
-│   ├── orchestrator.py      # Main orchestrator
-│   ├── state_machine.py     # RLGM lifecycle states
-│   ├── gprm.py              # Game Parameters dataclass
-│   ├── game_result.py       # GameResult dataclass
+│   ├── orchestrator.py      # Round lifecycle: start_round, abort, complete
+│   ├── state_machine.py     # RLGM lifecycle states (incl. pause/resume)
+│   ├── enums.py             # RLGMState, RLGMEvent enums
+│   ├── gprm.py              # Game Parameters frozen dataclass
+│   ├── game_result.py       # GameResult + PlayerScore dataclasses
 │   ├── broadcast_router.py  # Routes LM broadcasts
 │   ├── response_builder.py  # Builds LM responses
+│   ├── warmup_initiator.py  # Build warmup calls for new rounds
+│   ├── abort_handler.py     # Abort scoring, winner determination
+│   ├── schema.sql           # SQLite database schema
 │   ├── database.py          # SQLite persistence
-│   ├── handler_*.py         # Message handlers (9 files)
+│   ├── handler_*.py         # Message handlers (10 files)
 │   └── repo_*.py            # Data repositories (3 files)
 │
 ├── _gmc/                    # GMC Layer (single game)
@@ -105,6 +110,7 @@ src/q21_referee/
 │   ├── context_builder.py   # Callback context building
 │   ├── callback_executor.py # Callback execution with timeouts
 │   ├── validator.py         # Protocol validation
+│   ├── snapshot.py          # Per-player state snapshot (abort reporting)
 │   └── handlers/            # Player message handlers
 │       ├── warmup.py
 │       ├── questions.py
