@@ -492,6 +492,7 @@ config = {
     "credentials_path": "credentials.json",          # OAuth credentials
     "token_path": "token.json",                      # OAuth token (auto-created)
     "league_id": "LEAGUE001",
+    "display_name": "My Referee Bot",                  # Optional (default: "Q21 Referee")
     "group_id": "my-group",                          # Optional metadata
     "poll_interval_seconds": 5,
 }
@@ -625,10 +626,10 @@ q21-referee-sdk/
 │   │   ├── handler_new_round.py # Builds GPRM from assignments (with validation)
 │   │   ├── handler_end_round.py # Signals abort for active round
 │   │   ├── handler_end_season.py
-│   │   ├── handler_keep_alive.py
-│   │   ├── handler_critical_pause.py
-│   │   ├── handler_critical_reset.py
-│   │   ├── handler_round_results.py
+│   │   ├── handler_keep_alive.py       # Not yet registered in orchestrator
+│   │   ├── handler_critical_pause.py   # Not yet registered in orchestrator
+│   │   ├── handler_critical_reset.py   # Not yet registered in orchestrator
+│   │   ├── handler_round_results.py    # Not yet registered in orchestrator
 │   │   ├── database.py          # SQLite persistence
 │   │   ├── repo_assignments.py
 │   │   ├── repo_broadcasts.py
