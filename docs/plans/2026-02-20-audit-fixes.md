@@ -1,5 +1,7 @@
 # Audit Issue Fixes Implementation Plan
 
+Version: 1.0.0
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Fix 7 issues found during the wiring audit — 1 critical crash risk, 2 high defensive-guard gaps, 3 medium accuracy/type issues, 1 low validation gap.

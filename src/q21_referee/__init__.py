@@ -1,3 +1,5 @@
+# Area: Public API
+# PRD: docs/prd-rlgm.md
 """
 q21_referee — Q21 League Referee Package
 =========================================

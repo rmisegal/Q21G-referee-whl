@@ -1,6 +1,6 @@
 # Q21 Referee SDK
 
-Version: 2.0.0
+Version: 2.1.0
 
 A Python SDK for implementing Q21 League referee AI. Students implement 4 callback methods to create their referee logic.
 
@@ -145,7 +145,8 @@ class MyRefereeAI(RefereeAI):
         }
 
     def get_answers(self, ctx):
-        questions = ctx.get("questions", [])
+        data = ctx.get("dynamic", ctx)
+        questions = data.get("questions", [])
         return {
             "answers": [
                 {"question_number": q["question_number"], "answer": "B"}
@@ -255,6 +256,21 @@ runner.run()
 | `player1_id` | Yes | Player 1 ID |
 | `player2_email` | Yes | Player 2 email |
 | `player2_id` | Yes | Player 2 ID |
+
+## Context Structure
+
+All callbacks receive a context dict with this structure:
+
+```python
+ctx = {
+    "dynamic": { ... },  # Game data (varies per callback)
+    "service": { ... },  # Service metadata (name, deadline, etc.)
+}
+```
+
+Access the game data with: `data = ctx.get("dynamic", ctx)`
+
+See `types.py` for full field documentation per callback.
 
 ## RefereeAI Interface
 
