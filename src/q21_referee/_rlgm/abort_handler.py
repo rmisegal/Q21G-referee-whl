@@ -75,8 +75,9 @@ def score_player_on_abort(
 
 def determine_abort_winner(gmc: GameManagementCycle):
     """Determine winner for an aborted game (same logic as normal)."""
-    p1 = gmc.state.player1
-    p2 = gmc.state.player2
+    p1, p2 = gmc.state.player1, gmc.state.player2
+    if not p1 or not p2:
+        return None
     if p1.league_points > p2.league_points:
         return p1.participant_id
     if p2.league_points > p1.league_points:
@@ -86,13 +87,18 @@ def determine_abort_winner(gmc: GameManagementCycle):
 
 def is_abort_draw(gmc: GameManagementCycle) -> bool:
     """Check if aborted game is a draw."""
-    return gmc.state.player1.league_points == gmc.state.player2.league_points
+    p1, p2 = gmc.state.player1, gmc.state.player2
+    if not p1 or not p2:
+        return True
+    return p1.league_points == p2.league_points
 
 
 def build_abort_scores(gmc: GameManagementCycle) -> list:
     """Build scores list for aborted game match result."""
     scores = []
     for player in [gmc.state.player1, gmc.state.player2]:
+        if player is None:
+            continue
         scores.append({
             "participant_id": player.participant_id,
             "email": player.email,

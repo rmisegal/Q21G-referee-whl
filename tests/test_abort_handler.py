@@ -3,7 +3,12 @@
 """Tests for abort_handler — resilient scoring during game abort."""
 
 import pytest
-from q21_referee._rlgm.abort_handler import score_player_on_abort
+from q21_referee._rlgm.abort_handler import (
+    score_player_on_abort,
+    determine_abort_winner,
+    is_abort_draw,
+    build_abort_scores,
+)
 from q21_referee._rlgm.gprm import GPRM
 from q21_referee._gmc.gmc import GameManagementCycle
 from q21_referee.callbacks import RefereeAI
@@ -138,3 +143,36 @@ class TestScorePlayerOnAbortResilience:
         assert player.league_points == 2
         assert player.private_score == 65.0
         assert player.score_sent is True
+
+
+class TestAbortNoneGuards:
+    """Tests for None player guards in abort helper functions."""
+
+    def _make_gmc_with_none_player2(self):
+        """Create GMC where player2 is None."""
+        ai = FailingScoreAI()
+        config = _make_config()
+        gprm = _make_gprm()
+        gmc = GameManagementCycle(gprm, ai, config)
+        gmc.state.player2 = None
+        return gmc
+
+    def test_determine_abort_winner_with_none_player(self):
+        gmc = self._make_gmc_with_none_player2()
+        assert determine_abort_winner(gmc) is None
+
+    def test_is_abort_draw_with_none_player(self):
+        gmc = self._make_gmc_with_none_player2()
+        assert is_abort_draw(gmc) is True
+
+    def test_build_abort_scores_with_none_player(self):
+        gmc = self._make_gmc_with_none_player2()
+        scores = build_abort_scores(gmc)
+        assert len(scores) == 1
+        assert scores[0]["participant_id"] == "P001"
+
+    def test_build_abort_scores_both_none(self):
+        gmc = self._make_gmc_with_none_player2()
+        gmc.state.player1 = None
+        scores = build_abort_scores(gmc)
+        assert len(scores) == 0
