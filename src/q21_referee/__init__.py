@@ -45,6 +45,9 @@ from .errors import (
     SchemaValidationError,
 )
 from .types import (
+    # Envelope types
+    ServiceDefinition,
+    CallbackContext,
     # Warmup types
     WarmupContext,
     WarmupResponse,
@@ -59,6 +62,7 @@ from .types import (
     Answer,
     AnswersResponse,
     # Score feedback types
+    PlayerGuess,
     ScoreFeedbackContext,
     ScoreBreakdown,
     FeedbackMessages,
@@ -76,6 +80,9 @@ __all__ = [
     "CallbackTimeoutError",
     "InvalidJSONResponseError",
     "SchemaValidationError",
+    # Envelope types
+    "ServiceDefinition",
+    "CallbackContext",
     # Warmup types
     "WarmupContext",
     "WarmupResponse",
@@ -90,6 +97,7 @@ __all__ = [
     "Answer",
     "AnswersResponse",
     # Score feedback types
+    "PlayerGuess",
     "ScoreFeedbackContext",
     "ScoreBreakdown",
     "FeedbackMessages",
