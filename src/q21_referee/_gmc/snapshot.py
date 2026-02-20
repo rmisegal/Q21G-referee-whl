@@ -15,8 +15,17 @@ def build_state_snapshot(game_id: str, state: GameState) -> dict:
     return {
         "game_id": game_id,
         "phase": state.phase.value,
-        "player1": _player_snapshot(state, state.player1),
-        "player2": _player_snapshot(state, state.player2),
+        "player1": _player_snapshot(state, state.player1) if state.player1 else _empty_snapshot(),
+        "player2": _player_snapshot(state, state.player2) if state.player2 else _empty_snapshot(),
+    }
+
+
+def _empty_snapshot() -> dict:
+    """Return a placeholder snapshot for a player that is not yet initialized."""
+    return {
+        "email": "", "participant_id": "",
+        "phase_reached": "not_initialized", "scored": False,
+        "last_actor": "none",
     }
 
 
