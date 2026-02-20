@@ -68,6 +68,9 @@ def initiate_warmup(
     # Build warmup calls for both players
     outgoing = []
     for player in [gmc.state.player1, gmc.state.player2]:
+        if player is None:
+            logger.warning("Skipping warmup for None player")
+            continue
         env, subject = gmc.builder.build_warmup_call(
             player_id=player.participant_id,
             game_id=gmc.state.game_id,
