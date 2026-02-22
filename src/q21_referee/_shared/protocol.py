@@ -119,16 +119,16 @@ def build_envelope(
         "payload": payload,
     }
 
-    # Add optional context fields
-    if correlation_id:
+    # Add optional context fields (use `is not None` to preserve falsy values)
+    if correlation_id is not None:
         envelope["correlation_id"] = correlation_id
-    if league_id:
+    if league_id is not None:
         envelope["league_id"] = league_id
-    if season_id:
+    if season_id is not None:
         envelope["season_id"] = season_id
-    if round_id:
+    if round_id is not None:
         envelope["round_id"] = round_id
-    if game_id:
+    if game_id is not None:
         envelope["game_id"] = game_id
 
     return envelope
