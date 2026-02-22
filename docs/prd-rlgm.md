@@ -1,6 +1,6 @@
 # PRD: RLGM - Referee League Game Manager
 
-**Version:** 2.6.0
+**Version:** 2.7.0
 **Area:** Season & Game Orchestration
 **PRD:** docs/prd-rlgm.md
 
@@ -419,6 +419,23 @@ CREATE INDEX IF NOT EXISTS idx_broadcasts_type
 | DemoAI state reset | `demo_ai.py` | Reset `_book_name`, `_book_hint`, `_association_domain` at round start |
 | Nested attachment fix | `email_client.py` | Pass message ID through recursive `_get_json_from_attachments` calls |
 
+### File Splits — 150-Line Compliance (v2.7.0)
+
+All source files brought under CLAUDE.md 150-line limit. Pure mechanical extraction — no behavior changes.
+
+| Original File | Lines | New Files Created | Post-Split Lines |
+|---|---|---|---|
+| `_gmc/validator.py` | 421 | `validator_schemas.py`, `validator_helpers.py`, `validator_composite.py` | 132, 98, 142, 67 |
+| `_shared/email_client.py` | 354 | `email_auth.py`, `email_reader.py` | 126, 74, 125 |
+| `demo_ai.py` | 350 | `demo_scorer.py` | 133, 150 |
+| `_gmc/context_builder.py` | 259 | `context_service.py` | 136, 33 |
+| `_gmc/envelope_builder.py` | 221 | `envelope_helpers.py` | 139, 72 |
+| `_shared/protocol_logger.py` | 221 | `protocol_display.py` | 149, 93 |
+| `_shared/logging_config.py` | 187 | `logging_formatters.py` | 120, 87 |
+| `errors.py` | 158 | `error_formatter.py` | 101, 64 |
+
+**Exempted:** `callbacks.py` (329 lines) — student-facing abstract class, splitting would hurt discoverability.
+
 ---
 
 ## 10. Interface Between RLGM and GMC
@@ -632,8 +649,10 @@ q21-referee-sdk/
 │   ├── rlgm_runner.py           # RLGMRunner (season mode, default)
 │   ├── types.py                 # TypedDict definitions for callbacks
 │   ├── errors.py                # Custom exception classes
+│   ├── error_formatter.py       # Structured error log formatting
 │   ├── cli.py                   # Command-line interface
 │   ├── demo_ai.py               # Pre-built DemoAI implementation
+│   ├── demo_scorer.py           # DemoAI scoring functions
 │   ├── _runner_config.py        # Configuration validation
 │   │
 │   ├── _gmc/                    # GMC Layer (pure game engine)
@@ -642,10 +661,15 @@ q21-referee-sdk/
 │   │   ├── state.py             # GameState, GamePhase, PlayerState
 │   │   ├── router.py            # Player message router (no broadcast routes)
 │   │   ├── envelope_builder.py  # Protocol message construction
+│   │   ├── envelope_helpers.py  # Envelope helper functions
 │   │   ├── context_builder.py   # Callback context building
+│   │   ├── context_service.py   # SERVICE_DEFINITIONS dict
 │   │   ├── callback_executor.py # Callback execution with timeouts
 │   │   ├── timeout.py           # Callback timeout enforcement (signal-based)
-│   │   ├── validator.py         # Protocol validation
+│   │   ├── validator.py         # Protocol validation orchestrator
+│   │   ├── validator_schemas.py # Callback schemas and constants
+│   │   ├── validator_helpers.py # Field-level validation helpers
+│   │   ├── validator_composite.py # List/nested validation helpers
 │   │   ├── snapshot.py          # Per-player state snapshot (abort reporting)
 │   │   └── handlers/
 │   │       ├── __init__.py
@@ -685,9 +709,13 @@ q21-referee-sdk/
 │   └── _shared/                 # Shared utilities
 │       ├── __init__.py
 │       ├── email_client.py      # Gmail OAuth client
-│       ├── logging_config.py    # Colored logging setup
+│       ├── email_auth.py        # OAuth2 credential management
+│       ├── email_reader.py      # Gmail message parsing utilities
+│       ├── logging_config.py    # Logging setup and error functions
+│       ├── logging_formatters.py # Log formatters, filters, protocol mode
 │       ├── protocol.py          # Protocol constants, envelope building
-│       └── protocol_logger.py   # Structured protocol message logging
+│       ├── protocol_logger.py   # Structured protocol message logging
+│       └── protocol_display.py  # Display constants for protocol logging
 │
 ├── docs/
 │   └── prd-rlgm.md              # This PRD
