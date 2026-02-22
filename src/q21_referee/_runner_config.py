@@ -21,6 +21,9 @@ INCOMING_MESSAGE_TYPES = {
     "BROADCAST_END_LEAGUE_ROUND",
     "BROADCAST_END_SEASON",
     "BROADCAST_KEEP_ALIVE",
+    "BROADCAST_CRITICAL_PAUSE",
+    "BROADCAST_CRITICAL_RESET",
+    "BROADCAST_ROUND_RESULTS",
     # Player messages (protocol: no underscores, but accept both for compatibility)
     "Q21WARMUPRESPONSE",
     "Q21_WARMUP_RESPONSE",
