@@ -119,6 +119,16 @@ class RLGMRunner:
         return outgoing
 
     def _send_messages(self, outgoing: List[Tuple[dict, str, str]]) -> None:
-        """Send outgoing messages."""
+        """Send outgoing messages. Retry once for MATCH_RESULT_REPORT."""
         for envelope, subject, recipient in outgoing:
-            self.email_client.send(recipient, subject, envelope)
+            success = self.email_client.send(recipient, subject, envelope)
+            if not success:
+                msg_type = envelope.get("message_type", "")
+                logger.warning(f"Send failed: {msg_type} to {recipient}")
+                if msg_type == "MATCH_RESULT_REPORT":
+                    time.sleep(2)
+                    retry = self.email_client.send(recipient, subject, envelope)
+                    if not retry:
+                        logger.error(
+                            f"MATCH_RESULT_REPORT retry failed to {recipient}"
+                        )
