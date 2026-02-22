@@ -30,12 +30,13 @@ def execute_callback(
     callback_name: str,
     ctx: Dict[str, Any],
     deadline_seconds: int,
-    terminate_on_error: bool = True,
+    terminate_on_error: bool = False,
 ) -> Dict[str, Any]:
     """Execute a callback with timeout, validation, and error handling.
 
-    When *terminate_on_error* is True (default), errors call
-    ``log_and_terminate`` instead of raising.
+    When *terminate_on_error* is True, errors call
+    ``log_and_terminate`` instead of raising.  Default is False so that
+    callers can handle errors themselves.
     """
     logger.debug(f"[CALLBACK] Executing {callback_name} (timeout={deadline_seconds}s)")
     protocol_logger = get_protocol_logger()
@@ -46,6 +47,11 @@ def execute_callback(
         with TimeoutHandler(deadline_seconds, callback_name, ctx):
             result = callback_fn(ctx)
     except CallbackTimeoutError as e:
+        if terminate_on_error:
+            log_and_terminate(e)
+        raise
+    except Exception as e:
+        logger.error(f"Callback '{callback_name}' raised: {e}", exc_info=True)
         if terminate_on_error:
             log_and_terminate(e)
         raise
