@@ -91,3 +91,39 @@ class TestBroadcastStartSeasonHandler:
         assert result["payload"]["user_id"] == "GROUP_A"
         assert result["payload"]["participant_id"] == "REF001"
         assert result["payload"]["display_name"] == "Q21 Referee"
+
+    def test_stores_season_id_in_config(self):
+        """Issue #25: season_id must be saved to config for downstream use."""
+        state_machine = RLGMStateMachine()
+        config = {
+            "referee_id": "REF001",
+            "referee_email": "ref@test.com",
+            "group_id": "GROUP_A",
+        }
+        handler = BroadcastStartSeasonHandler(state_machine, config)
+        message = {
+            "message_type": "BROADCAST_START_SEASON",
+            "broadcast_id": "BC001",
+            "league_id": "LEAGUE001",
+            "payload": {"season_id": "SEASON_2026_Q2"},
+        }
+        handler.handle(message)
+        assert config["season_id"] == "SEASON_2026_Q2"
+
+    def test_stores_league_id_in_config(self):
+        """Issue #25: league_id must be saved to config for downstream use."""
+        state_machine = RLGMStateMachine()
+        config = {
+            "referee_id": "REF001",
+            "referee_email": "ref@test.com",
+            "group_id": "GROUP_A",
+        }
+        handler = BroadcastStartSeasonHandler(state_machine, config)
+        message = {
+            "message_type": "BROADCAST_START_SEASON",
+            "broadcast_id": "BC001",
+            "league_id": "MY_LEAGUE",
+            "payload": {"season_id": "S01"},
+        }
+        handler.handle(message)
+        assert config["league_id"] == "MY_LEAGUE"

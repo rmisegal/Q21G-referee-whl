@@ -46,6 +46,10 @@ class BroadcastStartSeasonHandler(BaseBroadcastHandler):
         season_id = payload.get("season_id", "")
         league_id = message.get("league_id", "")
 
+        # Store for downstream use (handler_new_round reads config["season_id"])
+        self.config["season_id"] = season_id
+        self.config["league_id"] = league_id
+
         logger.info(f"Season starting: {season_id} in league {league_id}")
 
         # Transition state machine (force=True for out-of-order tolerance)
