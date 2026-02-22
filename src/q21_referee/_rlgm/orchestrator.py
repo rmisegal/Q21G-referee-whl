@@ -19,8 +19,7 @@ from .handler_round_results import BroadcastRoundResultsHandler
 from .gprm import GPRM
 from .enums import RLGMEvent
 from .warmup_initiator import initiate_warmup
-from .abort_handler import (score_player_on_abort, determine_abort_winner,
-                            is_abort_draw, build_abort_scores)
+from .abort_handler import build_abort_report
 from .._gmc.gmc import GameManagementCycle
 from ..callbacks import RefereeAI
 
@@ -104,20 +103,8 @@ class RLGMOrchestrator:
         """Force-complete the current game with abort status."""
         if not self.current_game:
             return []
-        outgoing: Msgs = []
-        gmc, snapshot = self.current_game, self.current_game.get_state_snapshot()
-        for key in ["player1", "player2"]:
-            player = getattr(gmc.state, key)
-            if player.guess is not None and not player.score_sent:
-                outgoing.extend(score_player_on_abort(gmc, player, self.ai, self.config))
-        env, subj = gmc.builder.build_match_result(
-            game_id=gmc.gprm.game_id, match_id=gmc.gprm.match_id,
-            round_id=gmc.gprm.round_id, winner_id=determine_abort_winner(gmc),
-            is_draw=is_abort_draw(gmc), scores=build_abort_scores(gmc),
-            status="aborted", abort_reason=reason,
-            player_states={"player1": snapshot["player1"],
-                           "player2": snapshot["player2"]})
-        outgoing.append((env, subj, self.config.get("league_manager_email", "")))
+        outgoing = build_abort_report(
+            self.current_game, reason, self.ai, self.config)
         self.current_game = None
         if self.state_machine.can_transition(RLGMEvent.GAME_ABORTED):
             self.state_machine.transition(RLGMEvent.GAME_ABORTED)

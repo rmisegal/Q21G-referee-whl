@@ -106,3 +106,33 @@ def build_abort_scores(gmc: GameManagementCycle) -> list:
             "private_score": player.private_score,
         })
     return scores
+
+
+Msgs = List[Tuple[dict, str, str]]
+
+
+def build_abort_report(
+    gmc: GameManagementCycle,
+    reason: str,
+    ai: RefereeAI,
+    config: Dict[str, Any],
+) -> Msgs:
+    """Build the full abort report: score unscored players, send match result.
+
+    Returns list of outgoing (envelope, subject, recipient) tuples.
+    """
+    outgoing: Msgs = []
+    snapshot = gmc.get_state_snapshot()
+    for key in ["player1", "player2"]:
+        player = getattr(gmc.state, key)
+        if player is not None and player.guess is not None and not player.score_sent:
+            outgoing.extend(score_player_on_abort(gmc, player, ai, config))
+    env, subj = gmc.builder.build_match_result(
+        game_id=gmc.gprm.game_id, match_id=gmc.gprm.match_id,
+        round_id=gmc.gprm.round_id, winner_id=determine_abort_winner(gmc),
+        is_draw=is_abort_draw(gmc), scores=build_abort_scores(gmc),
+        status="aborted", abort_reason=reason,
+        player_states={"player1": snapshot["player1"],
+                       "player2": snapshot["player2"]})
+    outgoing.append((env, subj, config.get("league_manager_email", "")))
+    return outgoing
