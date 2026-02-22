@@ -117,9 +117,15 @@ class EmailClient:
 
         # Refresh or get new credentials
         if not creds or not creds.valid:
+            refreshed = False
             if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
+                try:
+                    creds.refresh(Request())
+                    refreshed = True
+                except Exception:
+                    logger.warning("Token refresh failed, re-authenticating...")
+
+            if not refreshed:
                 flow = InstalledAppFlow.from_client_secrets_file(
                     str(creds_path), GMAIL_SCOPES
                 )
@@ -177,6 +183,7 @@ class EmailClient:
 
         except Exception as e:
             logger.error(f"Poll error: {e}")
+            self._service = None  # Force reconnect on next poll
 
         return messages
 
