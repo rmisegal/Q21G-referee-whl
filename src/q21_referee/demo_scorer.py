@@ -89,7 +89,6 @@ def calculate_similarity(actual: str, guess: str) -> float:
     jaccard = len(intersection) / len(union)
     return round(jaccard * 100, 2)
 
-
 def score_justification(
     text: str, min_words: int, max_words: int
 ) -> float:
