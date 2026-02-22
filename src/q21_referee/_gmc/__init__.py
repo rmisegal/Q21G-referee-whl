@@ -13,7 +13,8 @@ This package handles:
 
 from .state import GameState, GamePhase, PlayerState
 from .envelope_builder import EnvelopeBuilder
-from .context_builder import ContextBuilder, SERVICE_DEFINITIONS
+from .context_builder import ContextBuilder
+from .context_service import SERVICE_DEFINITIONS
 from .callback_executor import execute_callback
 from .router import MessageRouter
 from .validator import validate_output

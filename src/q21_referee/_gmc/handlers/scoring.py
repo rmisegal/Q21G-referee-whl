@@ -11,7 +11,7 @@ import logging
 from typing import List, Tuple
 
 from ..state import GamePhase
-from ..context_builder import SERVICE_DEFINITIONS
+from ..context_service import SERVICE_DEFINITIONS
 from ..callback_executor import execute_callback
 
 logger = logging.getLogger("q21_referee.router")

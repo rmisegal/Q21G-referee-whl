@@ -14,7 +14,8 @@ from typing import Any, Dict, List, Tuple
 
 from .._gmc.gmc import GameManagementCycle
 from .._gmc.state import GamePhase
-from .._gmc.context_builder import ContextBuilder, SERVICE_DEFINITIONS
+from .._gmc.context_builder import ContextBuilder
+from .._gmc.context_service import SERVICE_DEFINITIONS
 from .._gmc.callback_executor import execute_callback
 from ..callbacks import RefereeAI
 from .gprm import GPRM
