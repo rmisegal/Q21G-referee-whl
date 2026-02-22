@@ -43,14 +43,21 @@ def handle_warmup_response(ctx) -> List[Tuple[dict, str, str]]:
     # Build context for student callback
     callback_ctx = ctx.context_builder.build_round_start_info_ctx()
 
-    # Call student callback
+    # Call student callback (wrapped for resilience)
     service = SERVICE_DEFINITIONS["round_start_info"]
-    result = execute_callback(
-        callback_fn=ctx.ai.get_round_start_info,
-        callback_name="round_start_info",
-        ctx=callback_ctx,
-        deadline_seconds=service["deadline_seconds"],
-    )
+    try:
+        result = execute_callback(
+            callback_fn=ctx.ai.get_round_start_info,
+            callback_name="round_start_info",
+            ctx=callback_ctx,
+            deadline_seconds=service["deadline_seconds"],
+        )
+    except Exception:
+        logger.error(
+            "round_start_info callback failed; game stalled",
+            exc_info=True,
+        )
+        return []
 
     ctx.state.book_name = result.get("book_name", "Unknown Book")
     ctx.state.book_hint = result.get("book_hint", "A famous book")
