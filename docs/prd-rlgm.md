@@ -1,6 +1,6 @@
 # PRD: RLGM - Referee League Game Manager
 
-**Version:** 2.7.0
+**Version:** 2.8.0
 **Area:** Season & Game Orchestration
 **PRD:** docs/prd-rlgm.md
 
@@ -435,6 +435,13 @@ All source files brought under CLAUDE.md 150-line limit. Pure mechanical extract
 | `errors.py` | 158 | `error_formatter.py` | 101, 64 |
 
 **Exempted:** `callbacks.py` (329 lines) — student-facing abstract class, splitting would hurt discoverability.
+
+### Final Audit Cleanup (v2.8.0)
+
+| Fix | File(s) | Description |
+|-----|---------|-------------|
+| DemoAI "Not Relevant" regex | `demo_ai.py` | Answer regex now captures `"Not Relevant"` in addition to `A-D` |
+| Config mutation comment | `rlgm_runner.py` | Documented `config["referee_email"]` mutation after email connect |
 
 ---
 

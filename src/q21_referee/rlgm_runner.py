@@ -44,6 +44,7 @@ class RLGMRunner:
         self._log_startup()
         self.email_client.connect_imap()
         if self.email_client.address:
+            # Store for downstream use (envelope builders read config["referee_email"])
             self.config["referee_email"] = self.email_client.address
         while self._running:
             try:

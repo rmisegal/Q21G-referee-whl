@@ -89,7 +89,7 @@ class DemoAI(RefereeAI):
         answers = []
         for match in re.finditer(
             r'\{\s*"question_number"\s*:\s*(\d+)\s*,\s*'
-            r'"answer"\s*:\s*"([A-D])"\s*\}',
+            r'"answer"\s*:\s*"([A-D]|Not Relevant)"\s*\}',
             content,
         ):
             answers.append({
