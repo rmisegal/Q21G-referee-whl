@@ -1,6 +1,6 @@
 # PRD: RLGM - Referee League Game Manager
 
-**Version:** 2.5.0
+**Version:** 2.6.0
 **Area:** Season & Game Orchestration
 **PRD:** docs/prd-rlgm.md
 
@@ -402,6 +402,22 @@ CREATE INDEX IF NOT EXISTS idx_broadcasts_type
 | Extract protocol context | `runner_protocol_context.py` (new) | Protocol logger context extracted from rlgm_runner |
 | Email send retry | `rlgm_runner.py` | MATCH_RESULT_REPORT retried once on send failure |
 | OAuth refresh | `email_client.py` | `_service` reset on poll failure to force token refresh |
+
+### Game Integrity Fixes (v2.6.0)
+
+| Fix | File(s) | Description |
+|-----|---------|-------------|
+| Duplicate warmup guard | `handlers/warmup.py` | Reject replayed warmup responses (`player.warmup_answer is not None`) |
+| Duplicate questions guard | `handlers/questions.py` | Reject replayed question batches (`player.answers_sent`) |
+| Duplicate scoring guard | `handlers/scoring.py` | Reject replayed guess submissions (`player.score_sent`) |
+| Phase guards | `handlers/warmup.py`, `questions.py`, `scoring.py` | Reject messages in wrong game phase |
+| game_id validation | `orchestrator.py` | Reject player messages with mismatched game_id |
+| Broadcast idempotency | `orchestrator.py` | Skip duplicate broadcast_id messages via in-memory set |
+| Extract abort report | `abort_handler.py` | `build_abort_report()` extracted from orchestrator for line budget |
+| Falsy protocol fields | `protocol.py` | Use `is not None` instead of truthy checks (5 fields) |
+| Falsy envelope fields | `envelope_builder.py` | Use `is not None` instead of truthy checks (7 fields) |
+| DemoAI state reset | `demo_ai.py` | Reset `_book_name`, `_book_hint`, `_association_domain` at round start |
+| Nested attachment fix | `email_client.py` | Pass message ID through recursive `_get_json_from_attachments` calls |
 
 ---
 
