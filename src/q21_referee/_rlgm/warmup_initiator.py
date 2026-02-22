@@ -50,15 +50,19 @@ def initiate_warmup(
     }
     callback_ctx = ctx_builder.build_warmup_question_ctx(body)
 
-    # Call student callback
+    # Call student callback (with fallback on failure)
     service = SERVICE_DEFINITIONS["warmup_question"]
-    result = execute_callback(
-        callback_fn=ai.get_warmup_question,
-        callback_name="warmup_question",
-        ctx=callback_ctx,
-        deadline_seconds=service["deadline_seconds"],
-    )
-    warmup_q = result.get("warmup_question", "What is 2 + 2?")
+    try:
+        result = execute_callback(
+            callback_fn=ai.get_warmup_question,
+            callback_name="warmup_question",
+            ctx=callback_ctx,
+            deadline_seconds=service["deadline_seconds"],
+        )
+        warmup_q = result.get("warmup_question", "What is 2 + 2?")
+    except Exception:
+        logger.error("Warmup callback failed, using fallback question")
+        warmup_q = "What is 2 + 2?"
 
     # Set game state
     gmc.state.round_id = gprm.round_id

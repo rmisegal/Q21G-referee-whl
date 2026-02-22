@@ -102,3 +102,25 @@ class TestInitiateWarmup:
         outgoing = initiate_warmup(gmc, gprm, ai, config)
 
         assert len(outgoing) == 0
+
+
+class TestWarmupCallbackResilience:
+    """Tests for warmup callback failure handling."""
+
+    def test_callback_failure_uses_fallback_question(self):
+        """If get_warmup_question fails, fallback question is used."""
+        class FailingAI(MockRefereeAI):
+            def get_warmup_question(self, ctx):
+                raise ValueError("AI exploded")
+
+        config = make_config()
+        gprm = make_gprm()
+        ai = FailingAI()
+        gmc = GameManagementCycle(gprm, ai, config)
+
+        outgoing = initiate_warmup(gmc, gprm, ai, config)
+
+        # Should still send warmup calls with fallback question
+        assert len(outgoing) == 2
+        # Phase should still advance
+        assert gmc.state.phase == GamePhase.WARMUP_SENT
