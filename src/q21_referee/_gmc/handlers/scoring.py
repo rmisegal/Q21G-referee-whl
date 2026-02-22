@@ -16,6 +16,13 @@ from ..callback_executor import execute_callback
 
 logger = logging.getLogger("q21_referee.router")
 
+_ZERO_SCORE_DEFAULTS = {
+    "league_points": 0,
+    "private_score": 0.0,
+    "breakdown": {},
+    "feedback": None,
+}
+
 
 def handle_guess(ctx) -> List[Tuple[dict, str, str]]:
     """
@@ -40,12 +47,20 @@ def handle_guess(ctx) -> List[Tuple[dict, str, str]]:
 
     # Call student callback
     service = SERVICE_DEFINITIONS["score_feedback"]
-    result = execute_callback(
-        callback_fn=ctx.ai.get_score_feedback,
-        callback_name="score_feedback",
-        ctx=callback_ctx,
-        deadline_seconds=service["deadline_seconds"],
-    )
+    try:
+        result = execute_callback(
+            callback_fn=ctx.ai.get_score_feedback,
+            callback_name="score_feedback",
+            ctx=callback_ctx,
+            deadline_seconds=service["deadline_seconds"],
+        )
+    except Exception:
+        logger.error(
+            "Scoring callback failed for %s — using zero defaults",
+            player.participant_id,
+            exc_info=True,
+        )
+        result = dict(_ZERO_SCORE_DEFAULTS)
 
     league_points = result.get("league_points", 0)
     private_score = result.get("private_score", 0.0)
