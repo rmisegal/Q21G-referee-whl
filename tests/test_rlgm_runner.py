@@ -7,6 +7,10 @@ from unittest.mock import Mock, MagicMock, patch
 from q21_referee.rlgm_runner import RLGMRunner
 from q21_referee.callbacks import RefereeAI
 from q21_referee._rlgm.enums import RLGMState
+from q21_referee._rlgm.runner_protocol_context import (
+    update_context_before_routing,
+    update_context_after_routing,
+)
 
 
 class MockRefereeAI(RefereeAI):
@@ -111,7 +115,9 @@ class TestProtocolLoggerContext:
 
         # BROADCAST_START_SEASON is season-level
         body = {"message_type": "BROADCAST_START_SEASON", "payload": {}}
-        runner._update_protocol_logger_context("BROADCAST_START_SEASON", body)
+        update_context_before_routing(
+            runner.orchestrator, "BROADCAST_START_SEASON", body, runner._protocol_logger
+        )
 
         assert runner._protocol_logger._current_game_id == "0199999"
 
@@ -123,7 +129,10 @@ class TestProtocolLoggerContext:
         runner = RLGMRunner(config=config, ai=ai)
 
         body = {"message_type": "SEASON_REGISTRATION_RESPONSE", "payload": {}}
-        runner._update_protocol_logger_context("SEASON_REGISTRATION_RESPONSE", body)
+        update_context_before_routing(
+            runner.orchestrator, "SEASON_REGISTRATION_RESPONSE", body,
+            runner._protocol_logger
+        )
 
         assert runner._protocol_logger._current_game_id == "0199999"
 
@@ -138,7 +147,10 @@ class TestProtocolLoggerContext:
             "message_type": "BROADCAST_ASSIGNMENT_TABLE",
             "payload": {"assignments": []},
         }
-        runner._update_protocol_logger_context("BROADCAST_ASSIGNMENT_TABLE", body)
+        update_context_before_routing(
+            runner.orchestrator, "BROADCAST_ASSIGNMENT_TABLE", body,
+            runner._protocol_logger
+        )
 
         assert runner._protocol_logger._current_game_id == "0199999"
 
@@ -153,7 +165,10 @@ class TestProtocolLoggerContext:
             "message_type": "BROADCAST_NEW_LEAGUE_ROUND",
             "payload": {"round_number": 3},
         }
-        runner._update_protocol_logger_context("BROADCAST_NEW_LEAGUE_ROUND", body)
+        update_context_before_routing(
+            runner.orchestrator, "BROADCAST_NEW_LEAGUE_ROUND", body,
+            runner._protocol_logger
+        )
 
         # Format: 01 (season) + 03 (round) + 999 (no game)
         assert runner._protocol_logger._current_game_id == "0103999"
@@ -176,7 +191,10 @@ class TestProtocolLoggerContext:
             "message_type": "BROADCAST_NEW_LEAGUE_ROUND",
             "payload": {"round_number": 2},
         }
-        runner._update_protocol_logger_context("BROADCAST_NEW_LEAGUE_ROUND", body)
+        update_context_before_routing(
+            runner.orchestrator, "BROADCAST_NEW_LEAGUE_ROUND", body,
+            runner._protocol_logger
+        )
 
         assert runner._protocol_logger._current_game_id == "0102001"
         assert runner._protocol_logger.role_active is True
@@ -196,7 +214,10 @@ class TestProtocolLoggerContext:
         runner.orchestrator.current_game = mock_game
 
         body = {"message_type": "Q21WARMUPRESPONSE", "payload": {}}
-        runner._update_protocol_logger_context("Q21WARMUPRESPONSE", body)
+        update_context_before_routing(
+            runner.orchestrator, "Q21WARMUPRESPONSE", body,
+            runner._protocol_logger
+        )
 
         assert runner._protocol_logger._current_game_id == "0105003"
         assert runner._protocol_logger.role_active is True
@@ -209,6 +230,9 @@ class TestProtocolLoggerContext:
         runner = RLGMRunner(config=config, ai=ai)
 
         body = {"message_type": "LEAGUE_COMPLETED", "payload": {}}
-        runner._update_protocol_logger_context("LEAGUE_COMPLETED", body)
+        update_context_before_routing(
+            runner.orchestrator, "LEAGUE_COMPLETED", body,
+            runner._protocol_logger
+        )
 
         assert runner._protocol_logger._current_game_id == "0199999"
