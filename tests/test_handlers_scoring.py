@@ -4,6 +4,7 @@
 
 from unittest.mock import Mock, patch
 from q21_referee._gmc.handlers.scoring import handle_guess
+from q21_referee._gmc.state import GamePhase
 
 
 def make_ctx(callback_raises=None):
@@ -39,6 +40,7 @@ def make_ctx(callback_raises=None):
     )
     ctx.state.game_id = "0101001"
     ctx.state.match_id = "0101001"
+    ctx.state.phase = GamePhase.ANSWERS_SENT
 
     return ctx
 
@@ -105,3 +107,36 @@ class TestScoringHandlerResilience:
         handle_guess(ctx)
         player = ctx.state.get_player_by_email.return_value
         assert player.feedback is None
+
+
+class TestScoringDuplicateAndPhaseGuards:
+    """Tests for duplicate protection and phase guards."""
+
+    def test_duplicate_guess_returns_empty(self):
+        """Second guess from same player is rejected."""
+        ctx = make_ctx()
+        player = ctx.state.get_player_by_email.return_value
+        player.score_sent = True
+        outgoing = handle_guess(ctx)
+        assert outgoing == []
+
+    def test_wrong_phase_returns_empty(self):
+        """Guess in wrong phase is rejected."""
+        ctx = make_ctx()
+        ctx.state.phase = GamePhase.WARMUP_SENT
+        outgoing = handle_guess(ctx)
+        assert outgoing == []
+
+    def test_answers_sent_phase_accepted(self):
+        """Guess in ANSWERS_SENT phase is accepted."""
+        ctx = make_ctx()
+        ctx.state.phase = GamePhase.ANSWERS_SENT
+        outgoing = handle_guess(ctx)
+        assert len(outgoing) == 1
+
+    def test_guesses_collecting_phase_accepted(self):
+        """Guess in GUESSES_COLLECTING phase is accepted."""
+        ctx = make_ctx()
+        ctx.state.phase = GamePhase.GUESSES_COLLECTING
+        outgoing = handle_guess(ctx)
+        assert len(outgoing) == 1

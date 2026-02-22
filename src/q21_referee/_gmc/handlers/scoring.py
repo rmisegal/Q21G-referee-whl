@@ -38,6 +38,12 @@ def handle_guess(ctx) -> List[Tuple[dict, str, str]]:
     if not player:
         logger.warning(f"Guess from unknown player: {ctx.sender_email}")
         return []
+    if player.score_sent:
+        logger.info(f"Duplicate guess from {player.participant_id}, ignoring")
+        return []
+    if ctx.state.phase not in (GamePhase.ANSWERS_SENT, GamePhase.GUESSES_COLLECTING):
+        logger.warning(f"Guess in wrong phase {ctx.state.phase.value}, ignoring")
+        return []
 
     player.guess = payload
     correlation_id = body.get("message_id")
@@ -64,12 +70,7 @@ def handle_guess(ctx) -> List[Tuple[dict, str, str]]:
 
     league_points = result.get("league_points", 0)
     private_score = result.get("private_score", 0.0)
-    breakdown = result.get("breakdown", {
-        "opening_sentence_score": 0,
-        "sentence_justification_score": 0,
-        "associative_word_score": 0,
-        "word_justification_score": 0,
-    })
+    breakdown = result.get("breakdown", {})
     feedback = result.get("feedback")
 
     player.league_points = league_points
