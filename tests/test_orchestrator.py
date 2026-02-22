@@ -157,3 +157,39 @@ class TestRLGMOrchestrator:
         assert orchestrator.current_round_number == 1
         pending = orchestrator.get_pending_outgoing()
         assert len(pending) == 2  # warmup calls
+
+    def test_keep_alive_handler_registered(self):
+        """Issue #2: BroadcastKeepAliveHandler must be registered."""
+        config = self.create_config()
+        ai = MockRefereeAI()
+        orchestrator = RLGMOrchestrator(config=config, ai=ai)
+
+        handler = orchestrator.router.get_handler("BROADCAST_KEEP_ALIVE")
+        assert handler is not None
+
+    def test_critical_pause_handler_registered(self):
+        """Issue #3: BroadcastCriticalPauseHandler must be registered."""
+        config = self.create_config()
+        ai = MockRefereeAI()
+        orchestrator = RLGMOrchestrator(config=config, ai=ai)
+
+        handler = orchestrator.router.get_handler("BROADCAST_CRITICAL_PAUSE")
+        assert handler is not None
+
+    def test_critical_reset_handler_registered(self):
+        """Issue #3: BroadcastCriticalResetHandler must be registered."""
+        config = self.create_config()
+        ai = MockRefereeAI()
+        orchestrator = RLGMOrchestrator(config=config, ai=ai)
+
+        handler = orchestrator.router.get_handler("BROADCAST_CRITICAL_RESET")
+        assert handler is not None
+
+    def test_round_results_handler_registered(self):
+        """Issue #4: BroadcastRoundResultsHandler must be registered."""
+        config = self.create_config()
+        ai = MockRefereeAI()
+        orchestrator = RLGMOrchestrator(config=config, ai=ai)
+
+        handler = orchestrator.router.get_handler("BROADCAST_ROUND_RESULTS")
+        assert handler is not None

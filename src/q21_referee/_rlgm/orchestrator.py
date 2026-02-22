@@ -12,6 +12,10 @@ from .handler_assignment import BroadcastAssignmentTableHandler
 from .handler_new_round import BroadcastNewRoundHandler
 from .handler_end_round import BroadcastEndRoundHandler
 from .handler_end_season import BroadcastEndSeasonHandler
+from .handler_keep_alive import BroadcastKeepAliveHandler
+from .handler_critical_pause import BroadcastCriticalPauseHandler
+from .handler_critical_reset import BroadcastCriticalResetHandler
+from .handler_round_results import BroadcastRoundResultsHandler
 from .gprm import GPRM
 from .enums import RLGMEvent
 from .warmup_initiator import initiate_warmup
@@ -54,6 +58,13 @@ class RLGMOrchestrator:
         reg("BROADCAST_END_LEAGUE_ROUND", self._end_round_handler)
         reg("BROADCAST_END_SEASON",
             BroadcastEndSeasonHandler(self.state_machine))
+        reg("BROADCAST_KEEP_ALIVE",
+            BroadcastKeepAliveHandler(self.config, self.response_builder))
+        reg("BROADCAST_CRITICAL_PAUSE",
+            BroadcastCriticalPauseHandler(self.state_machine))
+        reg("BROADCAST_CRITICAL_RESET",
+            BroadcastCriticalResetHandler(self.state_machine))
+        reg("BROADCAST_ROUND_RESULTS", BroadcastRoundResultsHandler())
 
     def handle_lm_message(self, message: Dict[str, Any]) -> Optional[Dict]:
         """Handle a message from the League Manager."""
