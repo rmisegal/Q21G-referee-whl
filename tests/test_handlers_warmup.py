@@ -41,6 +41,7 @@ def make_ctx(callback_raises=None):
     ctx.state.game_id = "0101001"
     ctx.state.match_id = "0101001"
     ctx.state.auth_token = "tok_abc"
+    ctx.state.phase = GamePhase.WARMUP_SENT
 
     return ctx
 
@@ -94,3 +95,34 @@ class TestWarmupHandlerResilience:
         ctx = make_ctx()
         outgoing = handle_warmup_response(ctx)
         assert outgoing == []
+
+
+class TestWarmupDuplicateAndPhaseGuards:
+    """Tests for duplicate protection and phase guards."""
+
+    def test_duplicate_warmup_returns_empty(self):
+        """Second warmup from same player is silently rejected."""
+        ctx = make_ctx()
+        player = ctx.state.get_player_by_email.return_value
+        player.warmup_answer = "already answered"
+        outgoing = handle_warmup_response(ctx)
+        assert outgoing == []
+
+    def test_wrong_phase_returns_empty(self):
+        """Warmup response in wrong phase is rejected."""
+        ctx = make_ctx()
+        ctx.state.phase = GamePhase.ROUND_STARTED
+        outgoing = handle_warmup_response(ctx)
+        assert outgoing == []
+
+    @patch("q21_referee._gmc.handlers.warmup.execute_callback")
+    def test_correct_phase_processes(self, mock_exec):
+        """Warmup response in WARMUP_SENT phase is accepted."""
+        mock_exec.return_value = {
+            "book_name": "Test", "book_hint": "Hint",
+            "association_word": "word",
+        }
+        ctx = make_ctx()
+        ctx.state.phase = GamePhase.WARMUP_SENT
+        outgoing = handle_warmup_response(ctx)
+        assert len(outgoing) == 2

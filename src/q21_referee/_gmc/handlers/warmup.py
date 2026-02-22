@@ -31,6 +31,14 @@ def handle_warmup_response(ctx) -> List[Tuple[dict, str, str]]:
         logger.warning(f"Warmup response from unknown player: {ctx.sender_email}")
         return []
 
+    if player.warmup_answer is not None:
+        logger.info(f"Duplicate warmup from {player.participant_id}, ignoring")
+        return []
+
+    if ctx.state.phase != GamePhase.WARMUP_SENT:
+        logger.warning(f"Warmup in wrong phase {ctx.state.phase.value}, ignoring")
+        return []
+
     player.warmup_answer = payload.get("answer", "")
     logger.info(f"Warmup response from {player.participant_id}: '{player.warmup_answer}'")
 
