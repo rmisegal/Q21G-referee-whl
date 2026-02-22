@@ -31,6 +31,14 @@ def handle_questions(ctx) -> List[Tuple[dict, str, str]]:
         logger.warning(f"Questions from unknown player: {ctx.sender_email}")
         return []
 
+    if player.answers_sent:
+        logger.info(f"Duplicate questions from {player.participant_id}, ignoring")
+        return []
+
+    if ctx.state.phase not in (GamePhase.ROUND_STARTED, GamePhase.QUESTIONS_COLLECTING):
+        logger.warning(f"Questions in wrong phase {ctx.state.phase.value}, ignoring")
+        return []
+
     player.questions = payload.get("questions", [])
     correlation_id = body.get("message_id")
 

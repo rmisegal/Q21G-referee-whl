@@ -4,6 +4,7 @@
 
 from unittest.mock import Mock, patch
 from q21_referee._gmc.handlers.questions import handle_questions
+from q21_referee._gmc.state import GamePhase
 
 VALID_ANSWERS = {"answers": [{"question_number": 1, "answer": "A"}]}
 
@@ -34,6 +35,7 @@ def make_ctx(callback_raises=None):
     ctx.state.game_id = "0101001"
     ctx.state.match_id = "0101001"
     ctx.state.auth_token = "tok_abc"
+    ctx.state.phase = GamePhase.ROUND_STARTED
 
     return ctx
 
@@ -50,5 +52,38 @@ class TestQuestionsHandlerResilience:
     def test_successful_callback_sends_answers(self):
         """Normal flow: player gets Q21ANSWERSBATCH."""
         ctx = make_ctx()
+        outgoing = handle_questions(ctx)
+        assert len(outgoing) == 1
+
+
+class TestQuestionsDuplicateAndPhaseGuards:
+    """Tests for duplicate protection and phase guards."""
+
+    def test_duplicate_questions_returns_empty(self):
+        """Second questions batch from same player is rejected."""
+        ctx = make_ctx()
+        player = ctx.state.get_player_by_email.return_value
+        player.answers_sent = True
+        outgoing = handle_questions(ctx)
+        assert outgoing == []
+
+    def test_wrong_phase_returns_empty(self):
+        """Questions in wrong phase are rejected."""
+        ctx = make_ctx()
+        ctx.state.phase = GamePhase.WARMUP_SENT
+        outgoing = handle_questions(ctx)
+        assert outgoing == []
+
+    def test_round_started_phase_accepted(self):
+        """Questions in ROUND_STARTED phase are accepted."""
+        ctx = make_ctx()
+        ctx.state.phase = GamePhase.ROUND_STARTED
+        outgoing = handle_questions(ctx)
+        assert len(outgoing) == 1
+
+    def test_questions_collecting_phase_accepted(self):
+        """Questions in QUESTIONS_COLLECTING phase are accepted."""
+        ctx = make_ctx()
+        ctx.state.phase = GamePhase.QUESTIONS_COLLECTING
         outgoing = handle_questions(ctx)
         assert len(outgoing) == 1
