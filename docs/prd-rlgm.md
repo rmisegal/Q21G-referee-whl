@@ -1,6 +1,6 @@
 # PRD: RLGM - Referee League Game Manager
 
-**Version:** 2.4.0
+**Version:** 2.5.0
 **Area:** Season & Game Orchestration
 **PRD:** docs/prd-rlgm.md
 
@@ -388,6 +388,21 @@ CREATE INDEX IF NOT EXISTS idx_broadcasts_type
 | Store season_id from broadcast | `handler_start_season.py` | Saves season_id and league_id to config for downstream GPRM construction |
 | Remove deprecated start_game | `orchestrator.py` | Removed deprecated method; trimmed to 149 lines |
 
+### Resilience & Safety Fixes (v2.5.0)
+
+| Fix | File(s) | Description |
+|-----|---------|-------------|
+| Safe callback default | `callback_executor.py` | `terminate_on_error` defaults to `False`; callbacks raise instead of calling `sys.exit(1)` |
+| Catch-all handler | `callback_executor.py` | Arbitrary student exceptions caught and re-raised (not just timeout/validation) |
+| Extract TimeoutHandler | `timeout.py` (new) | Timeout enforcement extracted from callback_executor; includes signal re-entrancy docs |
+| Resilient warmup init | `warmup_initiator.py` | Callback failure uses fallback question instead of crashing |
+| Resilient warmup handler | `handlers/warmup.py` | Callback failure returns empty (game stalls, process lives) |
+| Resilient questions handler | `handlers/questions.py` | Callback failure returns empty (game stalls, process lives) |
+| Resilient scoring handler | `handlers/scoring.py` | Callback failure uses zero-score defaults (game continues) |
+| Extract protocol context | `runner_protocol_context.py` (new) | Protocol logger context extracted from rlgm_runner |
+| Email send retry | `rlgm_runner.py` | MATCH_RESULT_REPORT retried once on send failure |
+| OAuth refresh | `email_client.py` | `_service` reset on poll failure to force token refresh |
+
 ---
 
 ## 10. Interface Between RLGM and GMC
@@ -613,6 +628,7 @@ q21-referee-sdk/
 │   │   ├── envelope_builder.py  # Protocol message construction
 │   │   ├── context_builder.py   # Callback context building
 │   │   ├── callback_executor.py # Callback execution with timeouts
+│   │   ├── timeout.py           # Callback timeout enforcement (signal-based)
 │   │   ├── validator.py         # Protocol validation
 │   │   ├── snapshot.py          # Per-player state snapshot (abort reporting)
 │   │   └── handlers/
@@ -632,6 +648,7 @@ q21-referee-sdk/
 │   │   ├── response_builder.py  # Build LM responses
 │   │   ├── warmup_initiator.py  # Build warmup calls for new rounds
 │   │   ├── abort_handler.py     # Abort scoring, winner determination
+│   │   ├── runner_protocol_context.py # Protocol logger context management
 │   │   ├── schema.sql           # SQLite database schema
 │   │   ├── handler_base.py      # Base handler class
 │   │   ├── handler_start_season.py

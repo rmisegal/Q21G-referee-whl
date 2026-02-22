@@ -97,6 +97,7 @@ src/q21_referee/
 │   ├── response_builder.py  # Builds LM responses
 │   ├── warmup_initiator.py  # Build warmup calls for new rounds
 │   ├── abort_handler.py     # Abort scoring, winner determination
+│   ├── runner_protocol_context.py # Protocol logger context management
 │   ├── schema.sql           # SQLite database schema
 │   ├── database.py          # SQLite persistence
 │   ├── handler_*.py         # Message handlers (10 files)
@@ -109,6 +110,7 @@ src/q21_referee/
 │   ├── envelope_builder.py  # Protocol message construction
 │   ├── context_builder.py   # Callback context building
 │   ├── callback_executor.py # Callback execution with timeouts
+│   ├── timeout.py           # Callback timeout enforcement (signal-based)
 │   ├── validator.py         # Protocol validation
 │   ├── snapshot.py          # Per-player state snapshot (abort reporting)
 │   └── handlers/            # Player message handlers
