@@ -1,6 +1,5 @@
 # Area: GMC
 # PRD: docs/prd-rlgm.md
-# NOTE: This file is 212 lines - may need splitting in Part 22
 """
 q21_referee._gmc.envelope_builder — Constructs outgoing protocol messages
 =========================================================================
@@ -11,29 +10,16 @@ Students never call this directly.
 """
 
 from __future__ import annotations
-import uuid
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
-
-
-def _msg_id(prefix: str) -> str:
-    return f"{prefix}-{uuid.uuid4().hex[:8]}"
-
-
-def _email_subject(protocol: str, role: str, email: str,
-                   tx_id: str, message_type: str) -> str:
-    return f"{protocol}::{role}::{email}::{tx_id}::{message_type}"
+from .envelope_helpers import (
+    base_league_envelope, base_q21_envelope, deadline_iso,
+    email_subject, msg_id,
+)
 
 
 class EnvelopeBuilder:
-    """
-    Builds all outgoing messages the referee needs to send.
-    Each method returns (envelope_dict, email_subject_str).
-    """
+    """Builds all outgoing messages the referee needs to send.
+    Each method returns (envelope_dict, email_subject_str)."""
 
     def __init__(self, referee_email: str, referee_id: str,
                  league_id: str, season_id: str):
@@ -42,78 +28,38 @@ class EnvelopeBuilder:
         self.league_id = league_id
         self.season_id = season_id
 
-    def _base_q21_envelope(self, message_type: str, recipient_id: str,
-                           game_id: str, msg_id: str,
-                           correlation_id: Optional[str] = None) -> dict:
-        env = {
-            "protocol": "Q21G.v1",
-            "message_type": message_type,
-            "message_id": msg_id,
-            "timestamp": _now_iso(),
-            "sender": {
-                "email": self.referee_email,
-                "role": "REFEREE",
-                "logical_id": self.referee_id,
-            },
-            "recipient_id": recipient_id,
-            "game_id": game_id,
-        }
-        if correlation_id is not None:
-            env["correlation_id"] = correlation_id
-        return env
+    def _base_q21_envelope(self, mtype: str, player_id: str, game_id: str,
+                           mid: str, correlation_id: str = None) -> dict:
+        return base_q21_envelope(mtype, mid, player_id, game_id,
+                                 self.referee_email, self.referee_id,
+                                 correlation_id=correlation_id)
 
-    def _base_league_envelope(self, message_type: str, recipient_id: str,
-                              msg_id: str, round_id: str = None,
-                              game_id: str = None,
+    def _base_league_envelope(self, mtype: str, recipient_id: str, mid: str,
+                              round_id: str = None, game_id: str = None,
                               correlation_id: str = None) -> dict:
-        env = {
-            "protocol": "league.v2",
-            "message_type": message_type,
-            "message_id": msg_id,
-            "timestamp": _now_iso(),
-            "sender": {
-                "email": self.referee_email,
-                "role": "REFEREE",
-                "logical_id": self.referee_id,
-            },
-            "recipient_id": recipient_id,
-            "league_id": self.league_id,
-            "season_id": self.season_id,
-        }
-        if round_id is not None:
-            env["round_id"] = round_id
-        if game_id is not None:
-            env["game_id"] = game_id
-        if correlation_id is not None:
-            env["correlation_id"] = correlation_id
-        return env
+        return base_league_envelope(mtype, mid, recipient_id,
+                                    self.referee_email, self.referee_id,
+                                    self.league_id, self.season_id,
+                                    round_id=round_id, game_id=game_id,
+                                    correlation_id=correlation_id)
 
-    # ── Q21WARMUPCALL (§7.2) ──────────────────────────────────
+    def _email_subject(self, protocol: str, mid: str, mtype: str) -> str:
+        return email_subject(protocol, "REFEREE", self.referee_email,
+                             mid, mtype)
 
     def build_warmup_call(self, player_id: str, game_id: str,
                           match_id: str, warmup_question: str,
                           auth_token: str,
                           deadline_minutes: int = 2) -> tuple[dict, str]:
-        msg_id = _msg_id(f"warmup-{match_id}-{player_id}")
-        deadline = datetime.now(timezone.utc)
-        # Add deadline_minutes
-        from datetime import timedelta
-        deadline = (deadline + timedelta(minutes=deadline_minutes)).strftime(
-            "%Y-%m-%dT%H:%M:%S.%f+00:00")
-
-        env = self._base_q21_envelope("Q21WARMUPCALL", player_id,
-                                       game_id, msg_id)
+        mid = msg_id(f"warmup-{match_id}-{player_id}")
+        env = self._base_q21_envelope("Q21WARMUPCALL", player_id, game_id, mid)
         env["payload"] = {
             "match_id": match_id,
             "warmup_question": warmup_question,
-            "deadline": deadline,
+            "deadline": deadline_iso(deadline_minutes),
             "auth_token": auth_token,
         }
-        subject = _email_subject("Q21G.v1", "REFEREE", self.referee_email,
-                                  msg_id, "Q21WARMUPCALL")
-        return env, subject
-
-    # ── Q21ROUNDSTART (§7.4) ──────────────────────────────────
+        return env, self._email_subject("Q21G.v1", mid, "Q21WARMUPCALL")
 
     def build_round_start(self, player_id: str, game_id: str,
                           match_id: str, book_name: str,
@@ -121,63 +67,43 @@ class EnvelopeBuilder:
                           auth_token: str,
                           questions_required: int = 20,
                           deadline_minutes: int = 5) -> tuple[dict, str]:
-        msg_id = _msg_id(f"round-start-{match_id}-{player_id}")
-        from datetime import timedelta
-        deadline = (datetime.now(timezone.utc) + timedelta(minutes=deadline_minutes)).strftime(
-            "%Y-%m-%dT%H:%M:%S.%f+00:00")
-
-        env = self._base_q21_envelope("Q21ROUNDSTART", player_id,
-                                       game_id, msg_id)
+        mid = msg_id(f"round-start-{match_id}-{player_id}")
+        env = self._base_q21_envelope("Q21ROUNDSTART", player_id, game_id, mid)
         env["payload"] = {
             "match_id": match_id,
             "book_name": book_name,
             "book_hint": book_hint,
             "association_word": association_word,
             "questions_required": questions_required,
-            "deadline": deadline,
+            "deadline": deadline_iso(deadline_minutes),
             "auth_token": auth_token,
         }
-        subject = _email_subject("Q21G.v1", "REFEREE", self.referee_email,
-                                  msg_id, "Q21ROUNDSTART")
-        return env, subject
-
-    # ── Q21ANSWERSBATCH (§7.6) ────────────────────────────────
+        return env, self._email_subject("Q21G.v1", mid, "Q21ROUNDSTART")
 
     def build_answers_batch(self, player_id: str, game_id: str,
                             match_id: str, answers: list,
                             auth_token: str,
                             correlation_id: str = None,
                             deadline_minutes: int = 5) -> tuple[dict, str]:
-        msg_id = _msg_id(f"answers-{match_id}-{player_id}")
-        from datetime import timedelta
-        deadline = (datetime.now(timezone.utc) + timedelta(minutes=deadline_minutes)).strftime(
-            "%Y-%m-%dT%H:%M:%S.%f+00:00")
-
-        env = self._base_q21_envelope("Q21ANSWERSBATCH", player_id,
-                                       game_id, msg_id,
-                                       correlation_id=correlation_id)
+        mid = msg_id(f"answers-{match_id}-{player_id}")
+        env = self._base_q21_envelope("Q21ANSWERSBATCH", player_id, game_id, mid,
+                         correlation_id=correlation_id)
         env["payload"] = {
             "match_id": match_id,
             "answers": answers,
-            "deadline": deadline,
+            "deadline": deadline_iso(deadline_minutes),
             "auth_token": auth_token,
         }
-        subject = _email_subject("Q21G.v1", "REFEREE", self.referee_email,
-                                  msg_id, "Q21ANSWERSBATCH")
-        return env, subject
-
-    # ── Q21SCOREFEEDBACK (§7.8) ───────────────────────────────
+        return env, self._email_subject("Q21G.v1", mid, "Q21ANSWERSBATCH")
 
     def build_score_feedback(self, player_id: str, game_id: str,
                              match_id: str, league_points: int,
                              private_score: float, breakdown: dict,
                              feedback: dict = None,
                              correlation_id: str = None) -> tuple[dict, str]:
-        msg_id = _msg_id(f"score-{match_id}-{player_id}")
-
-        env = self._base_q21_envelope("Q21SCOREFEEDBACK", player_id,
-                                       game_id, msg_id,
-                                       correlation_id=correlation_id)
+        mid = msg_id(f"score-{match_id}-{player_id}")
+        env = self._base_q21_envelope("Q21SCOREFEEDBACK", player_id, game_id, mid,
+                         correlation_id=correlation_id)
         env["payload"] = {
             "match_id": match_id,
             "league_points": league_points,
@@ -186,11 +112,7 @@ class EnvelopeBuilder:
         }
         if feedback is not None:
             env["payload"]["feedback"] = feedback
-        subject = _email_subject("Q21G.v1", "REFEREE", self.referee_email,
-                                  msg_id, "Q21SCOREFEEDBACK")
-        return env, subject
-
-    # ── MATCH_RESULT_REPORT (§7.9) ────────────────────────────
+        return env, self._email_subject("Q21G.v1", mid, "Q21SCOREFEEDBACK")
 
     def build_match_result(self, game_id: str, match_id: str,
                            round_id: str, winner_id: str,
@@ -199,12 +121,10 @@ class EnvelopeBuilder:
                            status: str = "completed",
                            abort_reason: str = None,
                            player_states: dict = None) -> tuple[dict, str]:
-        msg_id = _msg_id(f"result-{match_id}")
-
-        env = self._base_league_envelope(
-            "MATCH_RESULT_REPORT", "LEAGUEMANAGER", msg_id,
-            round_id=round_id, game_id=game_id,
-            correlation_id=correlation_id)
+        mid = msg_id(f"result-{match_id}")
+        env = self._base_league_envelope("MATCH_RESULT_REPORT", "LEAGUEMANAGER", mid,
+                           round_id=round_id, game_id=game_id,
+                           correlation_id=correlation_id)
         env["payload"] = {
             "match_id": match_id,
             "status": status,
@@ -216,6 +136,4 @@ class EnvelopeBuilder:
             env["payload"]["abort_reason"] = abort_reason
         if player_states is not None:
             env["payload"]["player_states"] = player_states
-        subject = _email_subject("league.v2", "REFEREE", self.referee_email,
-                                  msg_id, "MATCH_RESULT_REPORT")
-        return env, subject
+        return env, self._email_subject("league.v2", mid, "MATCH_RESULT_REPORT")
