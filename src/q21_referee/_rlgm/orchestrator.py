@@ -116,6 +116,11 @@ class RLGMOrchestrator:
         if not self.current_game:
             logger.warning("No active game for player message")
             return []
+        incoming_game_id = body.get("game_id")
+        if incoming_game_id and incoming_game_id != self.current_game.gprm.game_id:
+            logger.warning("game_id mismatch: got %s, expected %s",
+                           incoming_game_id, self.current_game.gprm.game_id)
+            return []
         outgoing = self.current_game.route_message(
             message_type, body, sender_email)
         if self.current_game.is_complete():

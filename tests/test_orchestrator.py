@@ -222,3 +222,43 @@ class TestRLGMOrchestrator:
         orchestrator.handle_lm_message(message)
 
         assert orchestrator.current_game is None
+
+    def test_game_id_mismatch_rejected(self):
+        """Player message with wrong game_id is rejected."""
+        config = self.create_config()
+        ai = MockRefereeAI()
+        orchestrator = RLGMOrchestrator(config=config, ai=ai)
+
+        gprm = GPRM(
+            player1_email="p1@test.com", player1_id="P001",
+            player2_email="p2@test.com", player2_id="P002",
+            season_id="S01", game_id="0101001",
+            match_id="R1M1", round_id="ROUND_1", round_number=1,
+        )
+        orchestrator.current_game = GameManagementCycle(
+            gprm=gprm, ai=ai, config=config)
+
+        body = {"game_id": "0102999", "payload": {}}
+        outgoing = orchestrator.route_player_message(
+            "Q21WARMUPRESPONSE", body, "p1@test.com")
+        assert outgoing == []
+
+    def test_matching_game_id_accepted(self):
+        """Player message with correct game_id is processed."""
+        config = self.create_config()
+        ai = MockRefereeAI()
+        orchestrator = RLGMOrchestrator(config=config, ai=ai)
+
+        gprm = GPRM(
+            player1_email="p1@test.com", player1_id="P001",
+            player2_email="p2@test.com", player2_id="P002",
+            season_id="S01", game_id="0101001",
+            match_id="R1M1", round_id="ROUND_1", round_number=1,
+        )
+        orchestrator.current_game = GameManagementCycle(
+            gprm=gprm, ai=ai, config=config)
+
+        body = {"game_id": "0101001", "payload": {"answer": "4"}}
+        outgoing = orchestrator.route_player_message(
+            "Q21WARMUPRESPONSE", body, "p1@test.com")
+        assert isinstance(outgoing, list)
