@@ -4,16 +4,11 @@
 q21_referee._gmc.callback_executor — Safe callback execution
 ============================================================
 
-Wraps callback invocation with:
-1. Timeout enforcement
-2. JSON validation (ensure dict returned)
-3. Schema validation
-4. Error handling (log + terminate on failure)
+Wraps callback invocation with timeout enforcement, JSON/schema
+validation, and error handling (log + terminate on failure).
 """
 
 from __future__ import annotations
-import signal
-import sys
 from typing import Any, Callable, Dict
 import logging
 
@@ -22,42 +17,12 @@ from ..errors import (
     InvalidJSONResponseError,
     SchemaValidationError,
 )
+from .timeout import TimeoutHandler
 from .validator import validate_output, apply_score_feedback_penalties
 from .._shared.logging_config import log_and_terminate
 from .._shared.protocol_logger import get_protocol_logger
 
 logger = logging.getLogger("q21_referee.executor")
-
-
-class TimeoutHandler:
-    """Context manager for callback timeout enforcement."""
-
-    def __init__(self, seconds: int, callback_name: str, input_payload: Dict):
-        self.seconds = seconds
-        self.callback_name = callback_name
-        self.input_payload = input_payload
-        self._old_handler = None
-
-    def _timeout_handler(self, signum, frame):
-        raise CallbackTimeoutError(
-            callback_name=self.callback_name,
-            deadline_seconds=self.seconds,
-            input_payload=self.input_payload,
-        )
-
-    def __enter__(self):
-        # Only use signal-based timeout on Unix systems
-        if hasattr(signal, "SIGALRM"):
-            self._old_handler = signal.signal(signal.SIGALRM, self._timeout_handler)
-            signal.alarm(self.seconds)
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if hasattr(signal, "SIGALRM"):
-            signal.alarm(0)  # Cancel the alarm
-            if self._old_handler is not None:
-                signal.signal(signal.SIGALRM, self._old_handler)
-        return False  # Don't suppress exceptions
 
 
 def execute_callback(
@@ -67,36 +32,10 @@ def execute_callback(
     deadline_seconds: int,
     terminate_on_error: bool = True,
 ) -> Dict[str, Any]:
-    """
-    Execute a callback with timeout, validation, and error handling.
+    """Execute a callback with timeout, validation, and error handling.
 
-    Parameters
-    ----------
-    callback_fn : Callable
-        The callback function to execute.
-    callback_name : str
-        Name of the callback (for error messages and validation).
-    ctx : dict
-        The context dict to pass to the callback.
-    deadline_seconds : int
-        Maximum time allowed for the callback to complete.
-    terminate_on_error : bool
-        If True, terminate process on error. If False, raise exception.
-        Defaults to True.
-
-    Returns
-    -------
-    dict
-        The validated output from the callback.
-
-    Raises
-    ------
-    CallbackTimeoutError
-        If callback exceeds deadline (only if terminate_on_error=False).
-    InvalidJSONResponseError
-        If callback returns non-dict (only if terminate_on_error=False).
-    SchemaValidationError
-        If output fails validation (only if terminate_on_error=False).
+    When *terminate_on_error* is True (default), errors call
+    ``log_and_terminate`` instead of raising.
     """
     logger.debug(f"[CALLBACK] Executing {callback_name} (timeout={deadline_seconds}s)")
     protocol_logger = get_protocol_logger()
@@ -150,31 +89,10 @@ def execute_callback_safe(
     ctx: Dict[str, Any],
     deadline_seconds: int,
 ) -> Dict[str, Any]:
-    """
-    Execute a callback, raising exceptions instead of terminating.
+    """Execute a callback, raising exceptions instead of terminating.
 
-    This is useful for testing where you want to catch and inspect errors.
-
-    Parameters
-    ----------
-    callback_fn : Callable
-        The callback function to execute.
-    callback_name : str
-        Name of the callback.
-    ctx : dict
-        The context dict to pass to the callback.
-    deadline_seconds : int
-        Maximum time allowed for the callback.
-
-    Returns
-    -------
-    dict
-        The validated output from the callback.
-
-    Raises
-    ------
-    CallbackTimeoutError, InvalidJSONResponseError, SchemaValidationError
-        On any validation failure.
+    Convenience wrapper that calls ``execute_callback`` with
+    ``terminate_on_error=False``. Useful for testing.
     """
     return execute_callback(
         callback_fn=callback_fn,
