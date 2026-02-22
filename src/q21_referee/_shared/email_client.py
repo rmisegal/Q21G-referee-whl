@@ -241,7 +241,8 @@ class EmailClient:
 
             # Check nested parts (multipart emails)
             if part.get("parts"):
-                nested_result = self._get_json_from_attachments({"payload": part})
+                nested_result = self._get_json_from_attachments(
+                    {"payload": part, "id": msg.get("id", "")})
                 if nested_result:
                     return nested_result
 
