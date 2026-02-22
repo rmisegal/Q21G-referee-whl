@@ -39,12 +39,19 @@ def handle_questions(ctx) -> List[Tuple[dict, str, str]]:
 
     # Call student callback
     service = SERVICE_DEFINITIONS["answers"]
-    result = execute_callback(
-        callback_fn=ctx.ai.get_answers,
-        callback_name="answers",
-        ctx=callback_ctx,
-        deadline_seconds=service["deadline_seconds"],
-    )
+    try:
+        result = execute_callback(
+            callback_fn=ctx.ai.get_answers,
+            callback_name="answers",
+            ctx=callback_ctx,
+            deadline_seconds=service["deadline_seconds"],
+        )
+    except Exception:
+        logger.error(
+            f"get_answers callback failed for {player.participant_id}, "
+            "returning empty"
+        )
+        return []
 
     answers = result.get("answers", [])
 
