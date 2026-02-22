@@ -8,7 +8,8 @@ Each exception stores full context for structured logging.
 
 from __future__ import annotations
 from typing import Any, Dict, List, Optional
-import json
+
+from .error_formatter import format_error_block
 
 
 class Q21RefereeError(Exception):
@@ -33,7 +34,7 @@ class CallbackTimeoutError(Q21RefereeError):
         )
 
     def format_error_log(self) -> str:
-        return _format_error_block(
+        return format_error_block(
             error_type="CALLBACK_TIMEOUT",
             callback_name=self.callback_name,
             deadline_seconds=self.deadline_seconds,
@@ -61,7 +62,7 @@ class InvalidJSONResponseError(Q21RefereeError):
         )
 
     def format_error_log(self) -> str:
-        return _format_error_block(
+        return format_error_block(
             error_type="INVALID_JSON_RESPONSE",
             callback_name=self.callback_name,
             deadline_seconds=None,
@@ -90,7 +91,7 @@ class SchemaValidationError(Q21RefereeError):
         )
 
     def format_error_log(self) -> str:
-        return _format_error_block(
+        return format_error_block(
             error_type="SCHEMA_VALIDATION_FAILURE",
             callback_name=self.callback_name,
             deadline_seconds=None,
@@ -98,61 +99,3 @@ class SchemaValidationError(Q21RefereeError):
             output_payload=self.output_payload,
             validation_errors=self.validation_errors,
         )
-
-
-def _format_error_block(
-    error_type: str,
-    callback_name: str,
-    deadline_seconds: Optional[int],
-    input_payload: Dict[str, Any],
-    output_payload: Optional[Dict[str, Any]],
-    validation_errors: Optional[List[str]],
-) -> str:
-    """Format a structured error block per PRD specification."""
-    from datetime import datetime, timezone
-
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
-
-    lines = [
-        "",
-        "=" * 64,
-        " CALLBACK ERROR — PROCESS TERMINATED",
-        "=" * 64,
-        f" Timestamp:    {timestamp}",
-        f" Error Type:   {error_type}",
-        f" Callback:     {callback_name}",
-    ]
-
-    if deadline_seconds is not None:
-        lines.append(f" Deadline:     {deadline_seconds} seconds")
-
-    lines.append("")
-    lines.append(" ── INPUT PAYLOAD " + "─" * 46)
-    lines.append(_indent_json(input_payload))
-
-    if output_payload is not None:
-        lines.append("")
-        lines.append(" ── OUTPUT PAYLOAD (from callback) " + "─" * 29)
-        lines.append(_indent_json(output_payload))
-
-    if validation_errors:
-        lines.append("")
-        lines.append(" ── VALIDATION ERRORS " + "─" * 42)
-        for error in validation_errors:
-            lines.append(f" • {error}")
-
-    lines.append("")
-    lines.append("=" * 64)
-    lines.append("")
-
-    return "\n".join(lines)
-
-
-def _indent_json(data: Dict[str, Any], indent: int = 2) -> str:
-    """Format JSON with indentation for error logs."""
-    try:
-        formatted = json.dumps(data, indent=indent, default=str)
-        # Add leading space to each line
-        return "\n".join(" " + line for line in formatted.split("\n"))
-    except Exception:
-        return f" {repr(data)}"
