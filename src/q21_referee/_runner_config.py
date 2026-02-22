@@ -59,7 +59,9 @@ def validate_config(config: dict) -> None:
 
 def is_lm_message(message_type: str) -> bool:
     """Check if message is from League Manager."""
-    return message_type.startswith("BROADCAST_") or message_type == "SEASON_REGISTRATION_RESPONSE"
+    return message_type.startswith("BROADCAST_") or message_type in {
+        "SEASON_REGISTRATION_RESPONSE", "LEAGUE_COMPLETED"
+    }
 
 
 def is_player_message(message_type: str) -> bool:

@@ -30,3 +30,39 @@ class TestIncomingMessageTypes:
             "LEAGUE_COMPLETED",
         }
         assert expected.issubset(INCOMING_MESSAGE_TYPES)
+
+
+from q21_referee._runner_config import is_lm_message, is_player_message
+
+
+class TestIsLmMessage:
+    """Tests for is_lm_message() routing function."""
+
+    def test_league_completed_is_lm_message(self):
+        """LEAGUE_COMPLETED must route as LM message, not be dropped."""
+        assert is_lm_message("LEAGUE_COMPLETED") is True
+
+    def test_broadcast_types_are_lm_messages(self):
+        """All BROADCAST_* types should be LM messages."""
+        assert is_lm_message("BROADCAST_START_SEASON") is True
+        assert is_lm_message("BROADCAST_CRITICAL_PAUSE") is True
+        assert is_lm_message("BROADCAST_ROUND_RESULTS") is True
+
+    def test_season_registration_response_is_lm(self):
+        assert is_lm_message("SEASON_REGISTRATION_RESPONSE") is True
+
+    def test_player_messages_are_not_lm(self):
+        assert is_lm_message("Q21WARMUPRESPONSE") is False
+        assert is_lm_message("Q21QUESTIONSBATCH") is False
+
+
+class TestIsPlayerMessage:
+    """Tests for is_player_message() routing function."""
+
+    def test_league_completed_is_not_player_message(self):
+        assert is_player_message("LEAGUE_COMPLETED") is False
+
+    def test_q21_types_are_player_messages(self):
+        assert is_player_message("Q21WARMUPRESPONSE") is True
+        assert is_player_message("Q21QUESTIONSBATCH") is True
+        assert is_player_message("Q21GUESSSUBMISSION") is True
