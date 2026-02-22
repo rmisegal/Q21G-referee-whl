@@ -58,6 +58,8 @@ class RLGMOrchestrator:
         reg("BROADCAST_END_LEAGUE_ROUND", self._end_round_handler)
         reg("BROADCAST_END_SEASON",
             BroadcastEndSeasonHandler(self.state_machine))
+        reg("LEAGUE_COMPLETED",
+            BroadcastEndSeasonHandler(self.state_machine))
         reg("BROADCAST_KEEP_ALIVE",
             BroadcastKeepAliveHandler(self.config, self.response_builder))
         reg("BROADCAST_CRITICAL_PAUSE",
@@ -83,6 +85,9 @@ class RLGMOrchestrator:
             if result.get("abort_signal"):
                 self._pending_outgoing.extend(self.abort_current_game("end_round_received"))
             return None
+        if msg_type == "LEAGUE_COMPLETED":
+            self._pending_outgoing.extend(
+                self.abort_current_game("league_completed"))
         return result
 
     def get_pending_outgoing(self) -> Msgs:

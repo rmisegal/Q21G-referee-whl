@@ -193,3 +193,54 @@ class TestRLGMOrchestrator:
 
         handler = orchestrator.router.get_handler("BROADCAST_ROUND_RESULTS")
         assert handler is not None
+
+    def test_league_completed_handler_registered(self):
+        """Issue #5: LEAGUE_COMPLETED must have a handler."""
+        config = self.create_config()
+        ai = MockRefereeAI()
+        orchestrator = RLGMOrchestrator(config=config, ai=ai)
+
+        handler = orchestrator.router.get_handler("LEAGUE_COMPLETED")
+        assert handler is not None
+
+    def test_league_completed_transitions_state(self):
+        """LEAGUE_COMPLETED must transition state machine to COMPLETED."""
+        config = self.create_config()
+        ai = MockRefereeAI()
+        orchestrator = RLGMOrchestrator(config=config, ai=ai)
+
+        message = {
+            "message_type": "LEAGUE_COMPLETED",
+            "broadcast_id": "BC_END",
+            "payload": {"season_id": "SEASON_2026_Q1"},
+        }
+
+        orchestrator.handle_lm_message(message)
+
+        assert orchestrator.state_machine.current_state == RLGMState.COMPLETED
+
+    def test_league_completed_aborts_current_game(self):
+        """LEAGUE_COMPLETED must abort any active game."""
+        config = self.create_config()
+        ai = MockRefereeAI()
+        orchestrator = RLGMOrchestrator(config=config, ai=ai)
+
+        # Start a game using start_game (deprecated but still exists for now)
+        gprm = GPRM(
+            player1_email="p1@test.com", player1_id="P001",
+            player2_email="p2@test.com", player2_id="P002",
+            season_id="S01", game_id="0101001",
+            match_id="R1M1", round_id="ROUND_1", round_number=1,
+        )
+        orchestrator.start_game(gprm)
+        assert orchestrator.current_game is not None
+
+        message = {
+            "message_type": "LEAGUE_COMPLETED",
+            "broadcast_id": "BC_END",
+            "payload": {"season_id": "S01"},
+        }
+
+        orchestrator.handle_lm_message(message)
+
+        assert orchestrator.current_game is None
