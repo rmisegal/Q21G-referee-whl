@@ -44,28 +44,19 @@ class RLGMOrchestrator:
 
     def _register_handlers(self) -> None:
         reg = self.router.register_handler
-        reg("BROADCAST_START_SEASON",
-            BroadcastStartSeasonHandler(self.state_machine, self.config))
-        reg("SEASON_REGISTRATION_RESPONSE",
-            SeasonRegistrationResponseHandler(self.state_machine))
-        self._assignment_handler = BroadcastAssignmentTableHandler(
-            self.state_machine, self.config)
+        reg("BROADCAST_START_SEASON", BroadcastStartSeasonHandler(self.state_machine, self.config))
+        reg("SEASON_REGISTRATION_RESPONSE", SeasonRegistrationResponseHandler(self.state_machine))
+        self._assignment_handler = BroadcastAssignmentTableHandler(self.state_machine, self.config)
         reg("BROADCAST_ASSIGNMENT_TABLE", self._assignment_handler)
-        self._new_round_handler = BroadcastNewRoundHandler(
-            self.state_machine, self.config, self._assignments)
+        self._new_round_handler = BroadcastNewRoundHandler(self.state_machine, self.config, self._assignments)
         reg("BROADCAST_NEW_LEAGUE_ROUND", self._new_round_handler)
         self._end_round_handler = BroadcastEndRoundHandler(self.state_machine)
         reg("BROADCAST_END_LEAGUE_ROUND", self._end_round_handler)
-        reg("BROADCAST_END_SEASON",
-            BroadcastEndSeasonHandler(self.state_machine))
-        reg("LEAGUE_COMPLETED",
-            BroadcastEndSeasonHandler(self.state_machine))
-        reg("BROADCAST_KEEP_ALIVE",
-            BroadcastKeepAliveHandler(self.config, self.response_builder))
-        reg("BROADCAST_CRITICAL_PAUSE",
-            BroadcastCriticalPauseHandler(self.state_machine))
-        reg("BROADCAST_CRITICAL_RESET",
-            BroadcastCriticalResetHandler(self.state_machine))
+        reg("BROADCAST_END_SEASON", BroadcastEndSeasonHandler(self.state_machine))
+        reg("LEAGUE_COMPLETED", BroadcastEndSeasonHandler(self.state_machine))
+        reg("BROADCAST_KEEP_ALIVE", BroadcastKeepAliveHandler(self.config, self.response_builder))
+        reg("BROADCAST_CRITICAL_PAUSE", BroadcastCriticalPauseHandler(self.state_machine))
+        reg("BROADCAST_CRITICAL_RESET", BroadcastCriticalResetHandler(self.state_machine))
         reg("BROADCAST_ROUND_RESULTS", BroadcastRoundResultsHandler())
 
     def handle_lm_message(self, message: Dict[str, Any]) -> Optional[Dict]:
@@ -86,19 +77,13 @@ class RLGMOrchestrator:
                 self._pending_outgoing.extend(self.abort_current_game("end_round_received"))
             return None
         if msg_type == "LEAGUE_COMPLETED":
-            self._pending_outgoing.extend(
-                self.abort_current_game("league_completed"))
+            self._pending_outgoing.extend(self.abort_current_game("league_completed"))
         return result
 
     def get_pending_outgoing(self) -> Msgs:
         """Get and clear pending outgoing player messages."""
         msgs, self._pending_outgoing = self._pending_outgoing, []
         return msgs
-
-    def start_game(self, gprm: GPRM) -> None:
-        """Start a new game (deprecated: use start_round instead)."""
-        logger.warning("start_game deprecated")
-        self.current_game = GameManagementCycle(gprm=gprm, ai=self.ai, config=self.config)
 
     def start_round(self, gprm: GPRM) -> Msgs:
         """Start a new round: create GMC, send warmup calls."""
@@ -111,10 +96,8 @@ class RLGMOrchestrator:
             outgoing.extend(self.abort_current_game("new_round_started"))
         self.current_round_number = gprm.round_number
         self._end_round_handler.current_round_number = gprm.round_number
-        self.current_game = GameManagementCycle(
-            gprm=gprm, ai=self.ai, config=self.config)
-        outgoing.extend(
-            initiate_warmup(self.current_game, gprm, self.ai, self.config))
+        self.current_game = GameManagementCycle(gprm=gprm, ai=self.ai, config=self.config)
+        outgoing.extend(initiate_warmup(self.current_game, gprm, self.ai, self.config))
         return outgoing
 
     def abort_current_game(self, reason: str) -> Msgs:

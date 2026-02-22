@@ -8,6 +8,7 @@ from q21_referee._rlgm.orchestrator import RLGMOrchestrator
 from q21_referee._rlgm.gprm import GPRM
 from q21_referee._rlgm.enums import RLGMState, RLGMEvent
 from q21_referee.callbacks import RefereeAI
+from q21_referee._gmc.gmc import GameManagementCycle
 
 
 class MockRefereeAI(RefereeAI):
@@ -69,28 +70,6 @@ class TestRLGMOrchestrator:
         assert result is not None
         assert result["message_type"] == "SEASON_REGISTRATION_REQUEST"
 
-    def test_start_game_creates_gmc(self):
-        """Test that start_game creates a GMC instance."""
-        config = self.create_config()
-        ai = MockRefereeAI()
-        orchestrator = RLGMOrchestrator(config=config, ai=ai)
-
-        gprm = GPRM(
-            player1_email="p1@test.com",
-            player1_id="P001",
-            player2_email="p2@test.com",
-            player2_id="P002",
-            season_id="SEASON_2026_Q1",
-            game_id="0101001",
-            match_id="R1M1",
-            round_id="ROUND_1",
-            round_number=1,
-        )
-
-        orchestrator.start_game(gprm)
-
-        assert orchestrator.current_game is not None
-        assert orchestrator.current_game.gprm == gprm
 
     def test_route_player_message_no_handler(self):
         """Test routing player message with no matching handler returns empty."""
@@ -104,7 +83,7 @@ class TestRLGMOrchestrator:
             season_id="SEASON_2026_Q1", game_id="0101001",
             match_id="R1M1", round_id="ROUND_1", round_number=1,
         )
-        orchestrator.start_game(gprm)
+        orchestrator.current_game = GameManagementCycle(gprm=gprm, ai=ai, config=config)
 
         outgoing = orchestrator.route_player_message(
             "UNKNOWN_TYPE", {}, "p1@test.com"
@@ -225,14 +204,13 @@ class TestRLGMOrchestrator:
         ai = MockRefereeAI()
         orchestrator = RLGMOrchestrator(config=config, ai=ai)
 
-        # Start a game using start_game (deprecated but still exists for now)
         gprm = GPRM(
             player1_email="p1@test.com", player1_id="P001",
             player2_email="p2@test.com", player2_id="P002",
             season_id="S01", game_id="0101001",
             match_id="R1M1", round_id="ROUND_1", round_number=1,
         )
-        orchestrator.start_game(gprm)
+        orchestrator.current_game = GameManagementCycle(gprm=gprm, ai=ai, config=config)
         assert orchestrator.current_game is not None
 
         message = {
