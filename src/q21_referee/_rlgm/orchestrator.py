@@ -39,6 +39,7 @@ class RLGMOrchestrator:
         self.current_round_number: Optional[int] = None
         self._assignments: List[Dict[str, Any]] = []
         self._pending_outgoing: Msgs = []
+        self._processed_broadcasts: set = set()
         self._register_handlers()
 
     def _register_handlers(self) -> None:
@@ -61,6 +62,10 @@ class RLGMOrchestrator:
     def handle_lm_message(self, message: Dict[str, Any]) -> Optional[Dict]:
         """Handle a message from the League Manager."""
         msg_type = message.get("message_type", "")
+        broadcast_id = message.get("broadcast_id")
+        if broadcast_id and broadcast_id in self._processed_broadcasts:
+            logger.info("Duplicate broadcast %s, skipping", broadcast_id)
+            return None
         logger.info(f"Handling LM message: {msg_type}")
         result = self.router.route(message)
         if msg_type == "BROADCAST_ASSIGNMENT_TABLE":
@@ -77,6 +82,8 @@ class RLGMOrchestrator:
             return None
         if msg_type == "LEAGUE_COMPLETED":
             self._pending_outgoing.extend(self.abort_current_game("league_completed"))
+        if broadcast_id:
+            self._processed_broadcasts.add(broadcast_id)
         return result
 
     def get_pending_outgoing(self) -> Msgs:

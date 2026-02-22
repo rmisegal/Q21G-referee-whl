@@ -262,3 +262,21 @@ class TestRLGMOrchestrator:
         outgoing = orchestrator.route_player_message(
             "Q21WARMUPRESPONSE", body, "p1@test.com")
         assert isinstance(outgoing, list)
+
+    def test_duplicate_broadcast_skipped(self):
+        """Duplicate broadcast_id is silently skipped."""
+        config = self.create_config()
+        ai = MockRefereeAI()
+        orchestrator = RLGMOrchestrator(config=config, ai=ai)
+
+        message = {
+            "message_type": "BROADCAST_START_SEASON",
+            "broadcast_id": "BC001",
+            "payload": {"season_id": "S01", "league_id": "L01"},
+        }
+
+        result1 = orchestrator.handle_lm_message(message)
+        result2 = orchestrator.handle_lm_message(message)
+
+        assert result1 is not None
+        assert result2 is None  # Duplicate skipped
