@@ -1,6 +1,6 @@
 # PRD: RLGM - Referee League Game Manager
 
-**Version:** 2.3.0
+**Version:** 2.4.0
 **Area:** Season & Game Orchestration
 **PRD:** docs/prd-rlgm.md
 
@@ -38,7 +38,11 @@ The current GMC implementation:
 | BROADCAST_NEW_LEAGUE_ROUND | RLGM | `handler_new_round.py` |
 | BROADCAST_END_LEAGUE_ROUND | RLGM | `handler_end_round.py` |
 | BROADCAST_END_SEASON | RLGM | `handler_end_season.py` |
-| LEAGUE_COMPLETED | Runner | Accepted and logged; no active handler (terminal signal) |
+| BROADCAST_KEEP_ALIVE | RLGM | `handler_keep_alive.py` |
+| BROADCAST_CRITICAL_PAUSE | RLGM | `handler_critical_pause.py` |
+| BROADCAST_CRITICAL_RESET | RLGM | `handler_critical_reset.py` |
+| BROADCAST_ROUND_RESULTS | RLGM | `handler_round_results.py` |
+| LEAGUE_COMPLETED | RLGM | `handler_end_season.py` (reuses end-season handler; aborts active game) |
 | Q21WARMUPRESPONSE | GMC | `handlers/warmup.py` |
 | Q21QUESTIONSBATCH | GMC | `handlers/questions.py` |
 | Q21GUESSSUBMISSION | GMC | `handlers/scoring.py` |
@@ -374,6 +378,16 @@ CREATE INDEX IF NOT EXISTS idx_broadcasts_type
 | Context type docs | `types.py` | TypedDicts updated to document wrapped `{dynamic, service}` context structure |
 | Assignment validation | `handler_new_round.py` | Required fields validated before GPRM creation; missing fields prevent round start |
 
+### Wiring & Registration Fixes (v2.4.0)
+
+| Fix | File(s) | Description |
+|-----|---------|-------------|
+| Register 4 missing handlers | `orchestrator.py` | BroadcastKeepAlive, CriticalPause, CriticalReset, RoundResults now registered in `_register_handlers()` |
+| Accept 3 missing message types | `_runner_config.py` | BROADCAST_CRITICAL_PAUSE, CRITICAL_RESET, ROUND_RESULTS added to INCOMING_MESSAGE_TYPES |
+| Route LEAGUE_COMPLETED | `_runner_config.py`, `orchestrator.py` | `is_lm_message()` now matches LEAGUE_COMPLETED; wired to BroadcastEndSeasonHandler with game abort |
+| Store season_id from broadcast | `handler_start_season.py` | Saves season_id and league_id to config for downstream GPRM construction |
+| Remove deprecated start_game | `orchestrator.py` | Removed deprecated method; trimmed to 149 lines |
+
 ---
 
 ## 10. Interface Between RLGM and GMC
@@ -626,10 +640,10 @@ q21-referee-sdk/
 │   │   ├── handler_new_round.py # Builds GPRM from assignments (with validation)
 │   │   ├── handler_end_round.py # Signals abort for active round
 │   │   ├── handler_end_season.py
-│   │   ├── handler_keep_alive.py       # Not yet registered in orchestrator
-│   │   ├── handler_critical_pause.py   # Not yet registered in orchestrator
-│   │   ├── handler_critical_reset.py   # Not yet registered in orchestrator
-│   │   ├── handler_round_results.py    # Not yet registered in orchestrator
+│   │   ├── handler_keep_alive.py       # Responds to LM keep-alive pings
+│   │   ├── handler_critical_pause.py   # Pauses state machine on LM request
+│   │   ├── handler_critical_reset.py   # Resets state machine on LM request
+│   │   ├── handler_round_results.py    # Stores round results from LM
 │   │   ├── database.py          # SQLite persistence
 │   │   ├── repo_assignments.py
 │   │   ├── repo_broadcasts.py
