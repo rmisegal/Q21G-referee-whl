@@ -58,7 +58,7 @@ class EnvelopeBuilder:
             "recipient_id": recipient_id,
             "game_id": game_id,
         }
-        if correlation_id:
+        if correlation_id is not None:
             env["correlation_id"] = correlation_id
         return env
 
@@ -80,11 +80,11 @@ class EnvelopeBuilder:
             "league_id": self.league_id,
             "season_id": self.season_id,
         }
-        if round_id:
+        if round_id is not None:
             env["round_id"] = round_id
-        if game_id:
+        if game_id is not None:
             env["game_id"] = game_id
-        if correlation_id:
+        if correlation_id is not None:
             env["correlation_id"] = correlation_id
         return env
 
@@ -184,7 +184,7 @@ class EnvelopeBuilder:
             "private_score": private_score,
             "breakdown": breakdown,
         }
-        if feedback:
+        if feedback is not None:
             env["payload"]["feedback"] = feedback
         subject = _email_subject("Q21G.v1", "REFEREE", self.referee_email,
                                   msg_id, "Q21SCOREFEEDBACK")
@@ -212,9 +212,9 @@ class EnvelopeBuilder:
             "is_draw": is_draw,
             "scores": scores,
         }
-        if abort_reason:
+        if abort_reason is not None:
             env["payload"]["abort_reason"] = abort_reason
-        if player_states:
+        if player_states is not None:
             env["payload"]["player_states"] = player_states
         subject = _email_subject("league.v2", "REFEREE", self.referee_email,
                                   msg_id, "MATCH_RESULT_REPORT")
