@@ -103,6 +103,11 @@ class DemoAI(RefereeAI):
 
     def get_round_start_info(self, ctx: Dict[str, Any]) -> Dict[str, Any]:
         """Return book info from demo file."""
+        # Reset round-specific state
+        self._book_name = None
+        self._book_hint = None
+        self._association_domain = None
+
         content = self._read_demo_file(
             "Q21_ROUND_START.REFEREE_step1_game_setup.md"
         )
