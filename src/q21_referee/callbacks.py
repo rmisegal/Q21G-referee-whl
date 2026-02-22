@@ -1,3 +1,5 @@
+# Area: Student Callbacks
+# PRD: docs/prd-rlgm.md
 """
 q21_referee.callbacks — The 4 callback functions students implement
 ===================================================================

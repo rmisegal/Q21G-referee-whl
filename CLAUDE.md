@@ -83,8 +83,10 @@ src/q21_referee/
 ├── runner.py                # RefereeRunner (single-game mode)
 ├── rlgm_runner.py           # RLGMRunner (season mode, default)
 ├── demo_ai.py               # Pre-built DemoAI implementation
+├── demo_scorer.py           # Scoring functions for DemoAI
 ├── cli.py                   # Command-line interface
 ├── errors.py                # Custom exception classes
+├── error_formatter.py       # Error block formatting helpers
 ├── _runner_config.py        # Configuration validation
 │
 ├── _rlgm/                   # RLGM Layer (season orchestration)
@@ -108,10 +110,15 @@ src/q21_referee/
 │   ├── state.py             # GameState, GamePhase, PlayerState
 │   ├── router.py            # Player message router
 │   ├── envelope_builder.py  # Protocol message construction
+│   ├── envelope_helpers.py  # Envelope utility functions
 │   ├── context_builder.py   # Callback context building
+│   ├── context_service.py   # SERVICE_DEFINITIONS for callbacks
 │   ├── callback_executor.py # Callback execution with timeouts
 │   ├── timeout.py           # Callback timeout enforcement (signal-based)
-│   ├── validator.py         # Protocol validation
+│   ├── validator.py         # Protocol validation orchestrator
+│   ├── validator_schemas.py # Callback validation schemas
+│   ├── validator_helpers.py # Validation helper functions
+│   ├── validator_composite.py # List/nested dict validation
 │   ├── snapshot.py          # Per-player state snapshot (abort reporting)
 │   └── handlers/            # Player message handlers
 │       ├── warmup.py
@@ -119,10 +126,14 @@ src/q21_referee/
 │       └── scoring.py
 │
 └── _shared/                 # Shared utilities
-    ├── email_client.py      # Gmail OAuth client (IMAP/SMTP)
-    ├── logging_config.py    # Colored logging setup
+    ├── email_client.py      # Gmail OAuth client
+    ├── email_auth.py        # OAuth credential management
+    ├── email_reader.py      # Message parsing and attachment extraction
+    ├── logging_config.py    # Logging setup and utilities
+    ├── logging_formatters.py # Log formatters and filters
     ├── protocol.py          # Protocol constants, envelope building
-    └── protocol_logger.py   # Structured protocol message logging
+    ├── protocol_logger.py   # Structured protocol message logging
+    └── protocol_display.py  # Protocol display constants and color maps
 ```
 
 ## The 4 Callback Methods (Student API)

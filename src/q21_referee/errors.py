@@ -1,3 +1,5 @@
+# Area: Shared
+# PRD: docs/prd-rlgm.md
 """
 q21_referee.errors — Custom exception classes
 ==============================================
