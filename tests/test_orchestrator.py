@@ -85,8 +85,13 @@ class TestRLGMOrchestrator:
         )
         orchestrator.current_game = GameManagementCycle(gprm=gprm, ai=ai, config=config)
 
+        body = {
+            "message_type": "UNKNOWN_TYPE",
+            "sender": {"email": "p1@test.com"},
+            "payload": {},
+        }
         outgoing = orchestrator.route_player_message(
-            "UNKNOWN_TYPE", {}, "p1@test.com"
+            "UNKNOWN_TYPE", body, "p1@test.com"
         )
         assert outgoing == []
 
@@ -238,7 +243,12 @@ class TestRLGMOrchestrator:
         orchestrator.current_game = GameManagementCycle(
             gprm=gprm, ai=ai, config=config)
 
-        body = {"game_id": "0102999", "payload": {}}
+        body = {
+            "message_type": "Q21WARMUPRESPONSE",
+            "sender": {"email": "p1@test.com"},
+            "payload": {"answer": "4"},
+            "game_id": "0102999",
+        }
         outgoing = orchestrator.route_player_message(
             "Q21WARMUPRESPONSE", body, "p1@test.com")
         assert outgoing == []
@@ -258,7 +268,12 @@ class TestRLGMOrchestrator:
         orchestrator.current_game = GameManagementCycle(
             gprm=gprm, ai=ai, config=config)
 
-        body = {"game_id": "0101001", "payload": {"answer": "4"}}
+        body = {
+            "message_type": "Q21WARMUPRESPONSE",
+            "sender": {"email": "p1@test.com"},
+            "payload": {"answer": "4"},
+            "game_id": "0101001",
+        }
         outgoing = orchestrator.route_player_message(
             "Q21WARMUPRESPONSE", body, "p1@test.com")
         assert isinstance(outgoing, list)
