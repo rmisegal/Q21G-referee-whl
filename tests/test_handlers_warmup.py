@@ -23,6 +23,9 @@ def make_ctx(callback_raises=None):
         participant_id="P002", email="p2@test.com",
         questions_message_id=None,
     )
+    ctx.state.active_players.return_value = [
+        ctx.state.player1, ctx.state.player2,
+    ]
 
     ctx.context_builder.build_round_start_info_ctx.return_value = {}
 

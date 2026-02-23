@@ -73,7 +73,7 @@ def handle_warmup_response(ctx) -> List[Tuple[dict, str, str]]:
 
     # Send Q21ROUNDSTART to both players
     outgoing = []
-    for player in [ctx.state.player1, ctx.state.player2]:
+    for player in ctx.state.active_players():
         env, subject = ctx.builder.build_round_start(
             player_id=player.participant_id,
             game_id=ctx.state.game_id,
