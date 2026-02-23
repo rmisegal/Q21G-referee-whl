@@ -1,6 +1,6 @@
 # PRD: RLGM - Referee League Game Manager
 
-**Version:** 2.8.0
+**Version:** 2.9.0
 **Area:** Season & Game Orchestration
 **PRD:** docs/prd-rlgm.md
 
@@ -443,6 +443,38 @@ All source files brought under CLAUDE.md 150-line limit. Pure mechanical extract
 | DemoAI "Not Relevant" regex | `demo_ai.py` | Answer regex now captures `"Not Relevant"` in addition to `A-D` |
 | Config mutation comment | `rlgm_runner.py` | Documented `config["referee_email"]` mutation after email connect |
 
+### Single-Player Mode — Pre-Game Malfunction Detection (v2.9.0)
+
+Implements AGENT_ROUND_START.md: parse `participant_lookup_table` from BROADCAST_NEW_LEAGUE_ROUND, detect malfunctioned players, and adapt game behavior.
+
+**Three scenarios:**
+| Scenario | Condition | Action |
+|----------|-----------|--------|
+| Normal | Both players in lookup table | Standard two-player game |
+| Single-Player | One player missing | Full Q21 flow with remaining player; absent gets 1 point |
+| Cancel | Both players missing | MATCH_RESULT_REPORT with `CANCELLED_ALL_PLAYERS_MALFUNCTION` |
+
+**New modules:**
+
+| File | Purpose |
+|------|---------|
+| `_rlgm/malfunction_detector.py` | Pure function: lookup table + player emails → NORMAL/SINGLE_PLAYER/CANCELLED |
+| `_rlgm/cancel_report.py` | Builds MATCH_RESULT_REPORT for cancelled matches (both players absent) |
+| `_gmc/match_result_builder.py` | Extracted from scoring.py; builds match result with single-player mode fields |
+
+**Modified modules:**
+
+| File | Change |
+|------|--------|
+| `_gmc/state.py` | Added `single_player_mode`, `missing_player_role`, `missing_player_email` fields; `active_players()` method; refactored `both_*()` methods |
+| `_gmc/gmc.py` | Accepts `single_player_mode` and `missing_player_role` params; pre-fills absent player state (1 point, all phases complete) |
+| `_gmc/envelope_builder.py` | `build_match_result()` accepts single-player mode fields (`single_player_mode`, `missing_player`, `missing_player_email`, `missing_reason`) |
+| `_rlgm/handler_new_round.py` | Parses `participant_lookup_table` from payload; calls `detect_malfunctions()`; returns malfunction info in result |
+| `_rlgm/orchestrator.py` | Routes NORMAL/SINGLE_PLAYER/CANCELLED scenarios via `_handle_new_round()`; passes single-player config to `start_round()` |
+| `_rlgm/warmup_initiator.py` | Uses `active_players()` instead of hardcoded player list |
+| `_gmc/handlers/warmup.py` | Uses `active_players()` for Q21ROUNDSTART sends |
+| `_gmc/handlers/scoring.py` | Delegates match result building to `match_result_builder.py` |
+
 ---
 
 ## 10. Interface Between RLGM and GMC
@@ -453,12 +485,13 @@ The orchestrator owns round lifecycle with three operations:
 
 ```python
 class RLGMOrchestrator:
-    def start_round(self, gprm: GPRM) -> List[Tuple[dict, str, str]]:
+    def start_round(self, gprm: GPRM, single_player_mode=False,
+                    missing_player_role=None) -> List[Tuple[dict, str, str]]:
         """Start a new round: create GMC, send warmup calls.
 
         1. Skip if same round already active (idempotent)
         2. Abort current game if different round active
-        3. Create new GMC with GPRM
+        3. Create new GMC with GPRM (with single-player config if applicable)
         4. Call warmup_initiator to build Q21WARMUPCALL envelopes
         """
 
@@ -677,6 +710,7 @@ q21-referee-sdk/
 │   │   ├── validator_schemas.py # Callback schemas and constants
 │   │   ├── validator_helpers.py # Field-level validation helpers
 │   │   ├── validator_composite.py # List/nested validation helpers
+│   │   ├── match_result_builder.py # Match result building (normal + single-player)
 │   │   ├── snapshot.py          # Per-player state snapshot (abort reporting)
 │   │   └── handlers/
 │   │       ├── __init__.py
@@ -695,6 +729,8 @@ q21-referee-sdk/
 │   │   ├── response_builder.py  # Build LM responses
 │   │   ├── warmup_initiator.py  # Build warmup calls for new rounds
 │   │   ├── abort_handler.py     # Abort scoring, winner determination
+│   │   ├── malfunction_detector.py # Pre-game malfunction detection
+│   │   ├── cancel_report.py     # Cancelled match reporting
 │   │   ├── runner_protocol_context.py # Protocol logger context management
 │   │   ├── schema.sql           # SQLite database schema
 │   │   ├── handler_base.py      # Base handler class

@@ -99,6 +99,8 @@ src/q21_referee/
 │   ├── response_builder.py  # Builds LM responses
 │   ├── warmup_initiator.py  # Build warmup calls for new rounds
 │   ├── abort_handler.py     # Abort scoring, winner determination
+│   ├── malfunction_detector.py # Pre-game malfunction detection from lookup table
+│   ├── cancel_report.py     # Cancelled match reporting (both players missing)
 │   ├── runner_protocol_context.py # Protocol logger context management
 │   ├── schema.sql           # SQLite database schema
 │   ├── database.py          # SQLite persistence
@@ -119,6 +121,7 @@ src/q21_referee/
 │   ├── validator_schemas.py # Callback validation schemas
 │   ├── validator_helpers.py # Validation helper functions
 │   ├── validator_composite.py # List/nested dict validation
+│   ├── match_result_builder.py # Match result envelope building (normal + single-player)
 │   ├── snapshot.py          # Per-player state snapshot (abort reporting)
 │   └── handlers/            # Player message handlers
 │       ├── warmup.py
