@@ -95,6 +95,10 @@ class RLGMRunner:
             except Exception as e:
                 logger.error(f"Router error: {e}", exc_info=True)
                 self._protocol_logger.log_error(str(e))
+        # Check for expired player response deadlines
+        deadline_msgs = self.orchestrator.check_deadlines()
+        if deadline_msgs:
+            self._send_messages(deadline_msgs)
 
     def _route_message(
         self, message_type: str, body: dict, sender: str
