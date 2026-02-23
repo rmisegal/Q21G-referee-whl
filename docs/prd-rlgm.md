@@ -1,6 +1,6 @@
 # PRD: RLGM - Referee League Game Manager
 
-**Version:** 2.9.0
+**Version:** 2.10.0
 **Area:** Season & Game Orchestration
 **PRD:** docs/prd-rlgm.md
 
@@ -475,6 +475,41 @@ Implements AGENT_ROUND_START.md: parse `participant_lookup_table` from BROADCAST
 | `_gmc/handlers/warmup.py` | Uses `active_players()` for Q21ROUNDSTART sends |
 | `_gmc/handlers/scoring.py` | Delegates match result building to `match_result_builder.py` |
 
+### In-Game Deadline & Format Validation (v2.10.0)
+
+Implements Phase B: player response deadlines and incoming message format validation.
+
+**New modules:**
+
+| File | Purpose |
+|------|---------|
+| `_gmc/deadline_tracker.py` | Per-player deadline tracking; set on outgoing, cancel on incoming, check each poll cycle |
+| `_gmc/incoming_validator.py` | Validates player message format before routing; missing fields or bad structure triggers abort |
+
+**Modified modules:**
+
+| File | Change |
+|------|--------|
+| `_gmc/gmc.py` | Adds `deadline_tracker` attribute (DeadlineTracker instance per game) |
+| `_gmc/router.py` | Cancels player deadline on valid response; passes tracker via HandlerContext |
+| `_gmc/handlers/warmup.py` | Sets deadline after sending Q21ROUNDSTART |
+| `_gmc/handlers/questions.py` | Sets deadline after sending Q21ANSWERSBATCH |
+| `_rlgm/warmup_initiator.py` | Sets deadline after sending Q21WARMUPCALL |
+| `_rlgm/orchestrator.py` | `check_deadlines()` method; format validation in `route_player_message()` |
+| `rlgm_runner.py` | Calls `check_deadlines()` each poll cycle |
+
+**Configuration:**
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `player_response_timeout_seconds` | 40 | Seconds to wait for player response before aborting |
+
+**Deadline lifecycle:**
+1. Referee sends message → `deadline_tracker.set_deadline(phase, email, timeout)`
+2. Each poll cycle → `orchestrator.check_deadlines()` → abort if expired
+3. Player responds → `router.route()` cancels deadline via `tracker.cancel(email)`
+4. Game abort/complete → `tracker.clear()`
+
 ---
 
 ## 10. Interface Between RLGM and GMC
@@ -711,6 +746,8 @@ q21-referee-sdk/
 │   │   ├── validator_helpers.py # Field-level validation helpers
 │   │   ├── validator_composite.py # List/nested validation helpers
 │   │   ├── match_result_builder.py # Match result building (normal + single-player)
+│   │   ├── deadline_tracker.py  # Player response deadline tracking
+│   │   ├── incoming_validator.py # Incoming player message format validation
 │   │   ├── snapshot.py          # Per-player state snapshot (abort reporting)
 │   │   └── handlers/
 │   │       ├── __init__.py

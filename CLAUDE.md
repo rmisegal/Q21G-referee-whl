@@ -122,6 +122,8 @@ src/q21_referee/
 │   ├── validator_helpers.py # Validation helper functions
 │   ├── validator_composite.py # List/nested dict validation
 │   ├── match_result_builder.py # Match result envelope building (normal + single-player)
+│   ├── deadline_tracker.py  # Player response deadline tracking
+│   ├── incoming_validator.py # Incoming player message format validation
 │   ├── snapshot.py          # Per-player state snapshot (abort reporting)
 │   └── handlers/            # Player message handlers
 │       ├── warmup.py
