@@ -20,6 +20,7 @@ from .gprm import GPRM
 from .enums import RLGMEvent
 from .warmup_initiator import initiate_warmup
 from .abort_handler import build_abort_report
+from .cancel_report import build_cancel_report
 from .._gmc.gmc import GameManagementCycle
 from ..callbacks import RefereeAI
 
@@ -28,7 +29,6 @@ Msgs = List[Tuple[dict, str, str]]
 
 
 class RLGMOrchestrator:
-    """Main orchestrator for RLGM season lifecycle."""
 
     def __init__(self, config: Dict[str, Any], ai: RefereeAI):
         self.config, self.ai = config, ai
@@ -60,7 +60,6 @@ class RLGMOrchestrator:
         reg("BROADCAST_ROUND_RESULTS", BroadcastRoundResultsHandler())
 
     def handle_lm_message(self, message: Dict[str, Any]) -> Optional[Dict]:
-        """Handle a message from the League Manager."""
         msg_type = message.get("message_type", "")
         broadcast_id = message.get("broadcast_id")
         if broadcast_id and broadcast_id in self._processed_broadcasts:
@@ -72,9 +71,7 @@ class RLGMOrchestrator:
             self._assignments = self._assignment_handler.assignments
             self._new_round_handler.assignments = self._assignments
         if msg_type == "BROADCAST_NEW_LEAGUE_ROUND" and result:
-            gprm = result.get("gprm")
-            if gprm:
-                self._pending_outgoing.extend(self.start_round(gprm))
+            self._pending_outgoing.extend(self._handle_new_round(result))
             return None
         if msg_type == "BROADCAST_END_LEAGUE_ROUND" and result:
             if result.get("abort_signal"):
@@ -87,12 +84,22 @@ class RLGMOrchestrator:
         return result
 
     def get_pending_outgoing(self) -> Msgs:
-        """Get and clear pending outgoing player messages."""
         msgs, self._pending_outgoing = self._pending_outgoing, []
         return msgs
 
-    def start_round(self, gprm: GPRM) -> Msgs:
-        """Start a new round: create GMC, send warmup calls."""
+    def _handle_new_round(self, result: dict) -> Msgs:
+        gprm = result.get("gprm")
+        if not gprm:
+            return []
+        malf = result.get("malfunction", {})
+        if malf.get("status") == "CANCELLED":
+            return build_cancel_report(gprm, self.config)
+        sp = malf.get("status") == "SINGLE_PLAYER"
+        mr = malf.get("missing_player_role") if sp else None
+        return self.start_round(gprm, single_player_mode=sp, missing_player_role=mr)
+
+    def start_round(self, gprm: GPRM, single_player_mode: bool = False,
+                    missing_player_role: str = None) -> Msgs:
         if self.current_round_number == gprm.round_number:
             logger.info(f"Round {gprm.round_number} already active, skipping")
             return []
@@ -100,18 +107,18 @@ class RLGMOrchestrator:
         if self.current_game is not None:
             logger.info(f"Aborting round {self.current_round_number} to start {gprm.round_number}")
             outgoing.extend(self.abort_current_game("new_round_started"))
-        self.current_round_number = gprm.round_number
-        self._end_round_handler.current_round_number = gprm.round_number
-        self.current_game = GameManagementCycle(gprm=gprm, ai=self.ai, config=self.config)
+        self.current_round_number = self._end_round_handler.current_round_number = gprm.round_number
+        self.current_game = GameManagementCycle(
+            gprm=gprm, ai=self.ai, config=self.config,
+            single_player_mode=single_player_mode,
+            missing_player_role=missing_player_role)
         outgoing.extend(initiate_warmup(self.current_game, gprm, self.ai, self.config))
         return outgoing
 
     def abort_current_game(self, reason: str) -> Msgs:
-        """Force-complete the current game with abort status."""
         if not self.current_game:
             return []
-        outgoing = build_abort_report(
-            self.current_game, reason, self.ai, self.config)
+        outgoing = build_abort_report(self.current_game, reason, self.ai, self.config)
         self.current_game = None
         if self.state_machine.can_transition(RLGMEvent.GAME_ABORTED):
             self.state_machine.transition(RLGMEvent.GAME_ABORTED)
@@ -119,30 +126,25 @@ class RLGMOrchestrator:
 
     def route_player_message(self, message_type: str, body: dict,
                              sender_email: str) -> Msgs:
-        """Route a player message to the current game."""
         if not self.current_game:
             logger.warning("No active game for player message")
             return []
         incoming_game_id = body.get("game_id")
         if incoming_game_id and incoming_game_id != self.current_game.gprm.game_id:
-            logger.warning("game_id mismatch: got %s, expected %s",
-                           incoming_game_id, self.current_game.gprm.game_id)
+            logger.warning("game_id mismatch: got %s, expected %s", incoming_game_id, self.current_game.gprm.game_id)
             return []
-        outgoing = self.current_game.route_message(
-            message_type, body, sender_email)
+        outgoing = self.current_game.route_message(message_type, body, sender_email)
         if self.current_game.is_complete():
             self.complete_game()
         return outgoing
 
     def complete_game(self) -> None:
-        """Handle natural game completion."""
         if not self.current_game:
             return
         result = self.current_game.get_result()
         if result:
-            logger.info(f"Game complete: {result.match_id}")
+            logger.info("Game complete: %s", result.match_id)
             self.state_machine.transition(RLGMEvent.GAME_COMPLETE, force=True)
         self.current_game = None
 
-    def get_assignments(self) -> List[Dict[str, Any]]:
-        return self._assignments
+    def get_assignments(self) -> List[Dict[str, Any]]: return self._assignments
