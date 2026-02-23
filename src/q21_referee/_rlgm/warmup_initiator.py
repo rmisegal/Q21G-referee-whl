@@ -30,7 +30,7 @@ def initiate_warmup(
     config: Dict[str, Any],
 ) -> List[Tuple[dict, str, str]]:
     """
-    Build warmup calls for both players and advance GMC to WARMUP_SENT.
+    Build warmup calls for active players and advance GMC to WARMUP_SENT.
 
     Args:
         gmc: The GameManagementCycle instance
@@ -70,12 +70,9 @@ def initiate_warmup(
     gmc.state.round_number = gprm.round_number
     gmc.state.auth_token = f"tok_{uuid.uuid4().hex[:8]}"
 
-    # Build warmup calls for both players
+    # Build warmup calls for active players
     outgoing = []
-    for player in [gmc.state.player1, gmc.state.player2]:
-        if player is None:
-            logger.warning("Skipping warmup for None player")
-            continue
+    for player in gmc.state.active_players():
         env, subject = gmc.builder.build_warmup_call(
             player_id=player.participant_id,
             game_id=gmc.state.game_id,
