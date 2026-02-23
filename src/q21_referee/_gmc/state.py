@@ -13,7 +13,7 @@ are ready for the next step.
 from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 import logging
 
 logger = logging.getLogger("q21_referee.state")
@@ -63,6 +63,9 @@ class GameState:
     league_id: str
     round_id: Optional[str] = None
     round_number: Optional[int] = None
+    single_player_mode: bool = False
+    missing_player_role: Optional[str] = None   # "player1" or "player2"
+    missing_player_email: Optional[str] = None
     phase: GamePhase = GamePhase.IDLE
 
     # The two players
@@ -83,9 +86,24 @@ class GameState:
 
     # ── Phase transition helpers ─────────────────────────────
 
+    def active_players(self) -> List[PlayerState]:
+        """Return list of players actively participating in the game."""
+        if self.single_player_mode and self.missing_player_role:
+            if self.missing_player_role == "player1":
+                return [self.player2] if self.player2 else []
+            return [self.player1] if self.player1 else []
+        return [p for p in [self.player1, self.player2] if p is not None]
+
+    def _all_active_ready(self, check) -> bool:
+        """True when every expected active player satisfies *check*."""
+        expected = 1 if self.single_player_mode else 2
+        active = self.active_players()
+        return len(active) == expected and all(check(p) for p in active)
+
     def both_warmups_received(self) -> bool:
-        return (self.player1 is not None and self.player1.warmup_answer is not None
-                and self.player2 is not None and self.player2.warmup_answer is not None)
+        return self._all_active_ready(
+            lambda p: p.warmup_answer is not None
+        )
 
     def get_player_by_email(self, email: str) -> Optional[PlayerState]:
         if self.player1 and self.player1.email == email:
@@ -95,12 +113,10 @@ class GameState:
         return None
 
     def both_answers_sent(self) -> bool:
-        return (self.player1 is not None and self.player1.answers_sent
-                and self.player2 is not None and self.player2.answers_sent)
+        return self._all_active_ready(lambda p: p.answers_sent)
 
     def both_scores_sent(self) -> bool:
-        return (self.player1 is not None and self.player1.score_sent
-                and self.player2 is not None and self.player2.score_sent)
+        return self._all_active_ready(lambda p: p.score_sent)
 
     def advance_phase(self, new_phase: GamePhase):
         logger.info(f"[{self.game_id}] Phase: {self.phase.value} → {new_phase.value}")
