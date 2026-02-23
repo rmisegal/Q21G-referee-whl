@@ -3,7 +3,6 @@
 """
 q21_referee._gmc.gmc — Game Management Cycle Wrapper
 ====================================================
-
 High-level wrapper that accepts GPRM from RLGM and returns GameResult.
 """
 
@@ -28,7 +27,9 @@ class GameManagementCycle:
     Accepts GPRM from RLGM, manages game flow, and returns GameResult.
     """
 
-    def __init__(self, gprm: GPRM, ai: RefereeAI, config: Dict[str, Any]):
+    def __init__(self, gprm: GPRM, ai: RefereeAI, config: Dict[str, Any],
+                 single_player_mode: bool = False,
+                 missing_player_role: Optional[str] = None):
         """Initialize GMC from GPRM."""
         self.gprm = gprm
         self.ai = ai
@@ -51,6 +52,9 @@ class GameManagementCycle:
             ),
         )
 
+        if single_player_mode and missing_player_role:
+            self._setup_single_player(missing_player_role)
+
         # Build envelope builder
         self.builder = EnvelopeBuilder(
             referee_email=config.get("referee_email", ""),
@@ -66,6 +70,18 @@ class GameManagementCycle:
             builder=self.builder,
             config=config,
         )
+
+    def _setup_single_player(self, missing_player_role: str) -> None:
+        """Pre-fill missing player state for single-player mode."""
+        self.state.single_player_mode = True
+        self.state.missing_player_role = missing_player_role
+        missing = (self.state.player1 if missing_player_role == "player1"
+                   else self.state.player2)
+        self.state.missing_player_email = missing.email
+        missing.warmup_answer = "ABSENT_MALFUNCTION"
+        missing.answers_sent = True
+        missing.score_sent = True
+        missing.league_points = 1
 
     def route_message(
         self, message_type: str, body: dict, sender_email: str
