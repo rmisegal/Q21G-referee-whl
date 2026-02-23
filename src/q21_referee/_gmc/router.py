@@ -17,6 +17,7 @@ from .state import GameState
 from ..callbacks import RefereeAI
 from .envelope_builder import EnvelopeBuilder
 from .context_builder import ContextBuilder
+from .deadline_tracker import DeadlineTracker
 from .handlers import (
     handle_warmup_response,
     handle_questions,
@@ -37,6 +38,7 @@ class HandlerContext:
     config: dict
     body: dict
     sender_email: str
+    deadline_tracker: DeadlineTracker
 
 
 class MessageRouter:
@@ -55,11 +57,13 @@ class MessageRouter:
         state: GameState,
         builder: EnvelopeBuilder,
         config: dict,
+        deadline_tracker: DeadlineTracker,
     ):
         self.ai = ai
         self.state = state
         self.builder = builder
         self.config = config
+        self.deadline_tracker = deadline_tracker
         self.context_builder = ContextBuilder(config, state)
 
     def route(
@@ -70,6 +74,8 @@ class MessageRouter:
 
         Returns list of (envelope, subject, recipient_email) tuples.
         """
+        self.deadline_tracker.cancel(sender_email)
+
         ctx = HandlerContext(
             ai=self.ai,
             state=self.state,
@@ -78,6 +84,7 @@ class MessageRouter:
             config=self.config,
             body=body,
             sender_email=sender_email,
+            deadline_tracker=self.deadline_tracker,
         )
 
         if message_type in ("Q21WARMUPRESPONSE", "Q21_WARMUP_RESPONSE"):

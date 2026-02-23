@@ -1,11 +1,6 @@
 # Area: GMC
 # PRD: docs/prd-rlgm.md
-"""
-q21_referee._gmc.gmc — Game Management Cycle Wrapper
-====================================================
-High-level wrapper that accepts GPRM from RLGM and returns GameResult.
-"""
-
+"""GMC wrapper — accepts GPRM from RLGM, returns GameResult."""
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -13,6 +8,7 @@ from .state import GameState, GamePhase, PlayerState
 from .envelope_builder import EnvelopeBuilder
 from .router import MessageRouter
 from .snapshot import build_state_snapshot
+from .deadline_tracker import DeadlineTracker
 from ..callbacks import RefereeAI
 from .._rlgm.gprm import GPRM
 from .._rlgm.game_result import GameResult, PlayerScore
@@ -30,11 +26,11 @@ class GameManagementCycle:
     def __init__(self, gprm: GPRM, ai: RefereeAI, config: Dict[str, Any],
                  single_player_mode: bool = False,
                  missing_player_role: Optional[str] = None):
-        """Initialize GMC from GPRM."""
         self.gprm = gprm
         self.ai = ai
         self.config = config
         self._result: Optional[GameResult] = None
+        self.deadline_tracker = DeadlineTracker()
 
         # Build internal state from GPRM
         self.state = GameState(
@@ -69,6 +65,7 @@ class GameManagementCycle:
             state=self.state,
             builder=self.builder,
             config=config,
+            deadline_tracker=self.deadline_tracker,
         )
 
     def _setup_single_player(self, missing_player_role: str) -> None:
