@@ -82,6 +82,8 @@ def initiate_warmup(
         )
         player.warmup_message_id = env["message_id"]
         outgoing.append((env, subject, player.email))
+        timeout = config.get("player_response_timeout_seconds", 40)
+        gmc.deadline_tracker.set_deadline("warmup", player.email, timeout)
 
     gmc.state.advance_phase(GamePhase.WARMUP_SENT)
     return outgoing
