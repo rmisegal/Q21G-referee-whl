@@ -85,6 +85,8 @@ def handle_warmup_response(ctx) -> List[Tuple[dict, str, str]]:
         )
         player.questions_message_id = env["message_id"]
         outgoing.append((env, subject, player.email))
+        timeout = ctx.config.get("player_response_timeout_seconds", 40)
+        ctx.deadline_tracker.set_deadline("questions", player.email, timeout)
 
     ctx.state.advance_phase(GamePhase.ROUND_STARTED)
     return outgoing

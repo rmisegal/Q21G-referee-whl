@@ -73,6 +73,8 @@ def handle_questions(ctx) -> List[Tuple[dict, str, str]]:
     )
     player.answers_sent = True
     player.guess_message_id = env["message_id"]
+    timeout = ctx.config.get("player_response_timeout_seconds", 40)
+    ctx.deadline_tracker.set_deadline("guess", player.email, timeout)
 
     if ctx.state.both_answers_sent():
         ctx.state.advance_phase(GamePhase.ANSWERS_SENT)
