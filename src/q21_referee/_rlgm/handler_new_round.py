@@ -15,6 +15,7 @@ from .handler_base import BaseBroadcastHandler
 from .state_machine import RLGMStateMachine
 from .enums import RLGMEvent
 from .gprm import GPRM
+from .malfunction_detector import detect_malfunctions
 
 logger = logging.getLogger("q21_referee.rlgm.handler.new_round")
 
@@ -83,6 +84,12 @@ class BroadcastNewRoundHandler(BaseBroadcastHandler):
         if not gprm:
             return None
 
+        # Detect pre-game malfunctions from participant lookup table
+        lookup_table = payload.get("participant_lookup_table")
+        malfunction = detect_malfunctions(
+            lookup_table, assignment["player1_email"], assignment["player2_email"]
+        )
+
         # Transition to IN_GAME (force=True for out-of-order tolerance)
         self.state_machine.transition(RLGMEvent.ROUND_START, force=True)
 
@@ -91,6 +98,7 @@ class BroadcastNewRoundHandler(BaseBroadcastHandler):
             "round_id": round_id,
             "assignment": assignment,
             "gprm": gprm,
+            "malfunction": malfunction,
         }
 
     def _get_assignment_for_round(self, round_number: int) -> Optional[Dict[str, Any]]:
