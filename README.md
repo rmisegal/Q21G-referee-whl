@@ -1,6 +1,6 @@
 # Q21 Referee SDK
 
-Version: 2.1.0
+Version: 2.10.0
 
 A Python SDK for implementing Q21 League referee AI. Students implement 4 callback methods to create their referee logic.
 
@@ -244,6 +244,7 @@ runner.run()
 | `display_name` | No | Display name (default: "Q21 Referee") |
 | `league_manager_email` | Yes | League Manager email |
 | `poll_interval_seconds` | No | Email polling interval (default: 5) |
+| `player_response_timeout_seconds` | No | Seconds to wait for player response before aborting game (default: 40) |
 
 ### Single-Game Mode (RefereeRunner)
 
@@ -361,6 +362,15 @@ REFEREE_ID=REF001
 GROUP_ID=GROUP_01
 LEAGUE_MANAGER_EMAIL=league.manager@example.com
 ```
+
+## Built-in Protections
+
+The SDK automatically handles these scenarios — no student code required:
+
+- **Pre-game malfunction detection** — If a player is flagged in the assignment lookup table, the game runs in single-player mode (the active player still plays; the missing player receives a technical loss).
+- **Response deadline enforcement** — After sending a message to a player, the SDK starts a configurable timer (default: 40s via `player_response_timeout_seconds`). If the player doesn't respond in time, the game is aborted.
+- **Format validation** — Incoming player messages are validated for correct structure before processing. Malformed messages trigger a game abort.
+- **Cancelled match reporting** — If both players are flagged as malfunctioning, the match is cancelled and reported to the League Manager without starting a game.
 
 ## Protocol Compliance
 
