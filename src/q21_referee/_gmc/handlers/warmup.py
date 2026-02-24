@@ -39,6 +39,7 @@ def handle_warmup_response(ctx) -> List[Tuple[dict, str, str]]:
         logger.warning(f"Warmup in wrong phase {ctx.state.phase.value}, ignoring")
         return []
 
+    ctx.deadline_tracker.cancel(ctx.sender_email)
     player.warmup_answer = payload.get("answer", "")
     logger.info(f"Warmup response from {player.participant_id}: '{player.warmup_answer}'")
 

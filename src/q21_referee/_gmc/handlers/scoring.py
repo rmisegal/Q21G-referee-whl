@@ -13,6 +13,7 @@ from typing import List, Tuple
 from ..state import GamePhase
 from ..context_service import SERVICE_DEFINITIONS
 from ..callback_executor import execute_callback
+from ..match_result_builder import build_match_result as _build_match_result
 
 logger = logging.getLogger("q21_referee.router")
 
@@ -45,6 +46,7 @@ def handle_guess(ctx) -> List[Tuple[dict, str, str]]:
         logger.warning(f"Guess in wrong phase {ctx.state.phase.value}, ignoring")
         return []
 
+    ctx.deadline_tracker.cancel(ctx.sender_email)
     player.guess = payload
     correlation_id = body.get("message_id")
 
@@ -100,50 +102,3 @@ def handle_guess(ctx) -> List[Tuple[dict, str, str]]:
         ctx.state.advance_phase(GamePhase.GUESSES_COLLECTING)
 
     return outgoing
-
-
-def _build_match_result(ctx) -> List[Tuple[dict, str, str]]:
-    """Build MATCH_RESULT_REPORT after both players scored."""
-    p1 = ctx.state.player1
-    p2 = ctx.state.player2
-
-    # Determine winner
-    if p1.league_points > p2.league_points:
-        winner_id = p1.participant_id
-        is_draw = False
-    elif p2.league_points > p1.league_points:
-        winner_id = p2.participant_id
-        is_draw = False
-    else:
-        winner_id = None
-        is_draw = True
-
-    scores = [
-        {
-            "participant_id": p1.participant_id,
-            "email": p1.email,
-            "league_points": p1.league_points,
-            "private_score": p1.private_score,
-            "feedback": p1.feedback,
-        },
-        {
-            "participant_id": p2.participant_id,
-            "email": p2.email,
-            "league_points": p2.league_points,
-            "private_score": p2.private_score,
-            "feedback": p2.feedback,
-        },
-    ]
-
-    env, subject = ctx.builder.build_match_result(
-        game_id=ctx.state.game_id,
-        match_id=ctx.state.match_id,
-        round_id=ctx.state.round_id,
-        winner_id=winner_id,
-        is_draw=is_draw,
-        scores=scores,
-    )
-
-    lm_email = ctx.config.get("league_manager_email", "server@example.com")
-    logger.info(f"Match result: winner={'DRAW' if is_draw else winner_id}")
-    return [(env, subject, lm_email)]

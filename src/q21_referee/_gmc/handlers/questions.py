@@ -39,6 +39,7 @@ def handle_questions(ctx) -> List[Tuple[dict, str, str]]:
         logger.warning(f"Questions in wrong phase {ctx.state.phase.value}, ignoring")
         return []
 
+    ctx.deadline_tracker.cancel(ctx.sender_email)
     player.questions = payload.get("questions", [])
     correlation_id = body.get("message_id")
 

@@ -74,8 +74,6 @@ class MessageRouter:
 
         Returns list of (envelope, subject, recipient_email) tuples.
         """
-        self.deadline_tracker.cancel(sender_email)
-
         ctx = HandlerContext(
             ai=self.ai,
             state=self.state,
